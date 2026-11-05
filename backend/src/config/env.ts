@@ -16,9 +16,10 @@ export const env = {
    * Where the content library (lessons, media records, packs, progress) is saved as JSON.
    * "memory" keeps it in memory only (tests; read-only hosts such as serverless functions).
    */
-  contentStore: process.env.CONTENT_STORE ?? (isTest ? 'memory' : 'data/content.json'),
+  // On Vercel only /tmp is writable (and it is per instance, so saved content is not shared or kept).
+  contentStore: process.env.CONTENT_STORE ?? (isTest ? 'memory' : process.env.VERCEL ? '/tmp/laporte/content.json' : 'data/content.json'),
   /** Uploaded video and audio files. */
-  uploadDir: process.env.UPLOAD_DIR ?? (isTest ? '' : 'data/uploads'),
+  uploadDir: process.env.UPLOAD_DIR ?? (isTest ? '' : process.env.VERCEL ? '/tmp/laporte/uploads' : 'data/uploads'),
   maxUploadMb: Number(process.env.MAX_UPLOAD_MB ?? 500),
   corsOrigin: process.env.CORS_ORIGIN ?? 'http://localhost:5173',
   /** /api/demo/* snapshot + reset. Off in production unless explicitly enabled. */
