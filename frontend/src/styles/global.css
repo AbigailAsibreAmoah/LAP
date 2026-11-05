@@ -1847,7 +1847,8 @@ p {
 }
 .stairs {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  /* Six CEFR steps, A1 → C2, on one staircase. */
+  grid-template-columns: repeat(6, minmax(0, 1fr));
   align-items: end;
   border-bottom: 1px solid var(--line-strong);
 }
@@ -1855,8 +1856,8 @@ p {
   display: flex;
   flex-direction: column;
   gap: 10px;
-  min-height: calc(250px + var(--step) * 44px);
-  padding: 22px 22px 26px;
+  min-height: calc(230px + var(--step) * 36px);
+  padding: 20px 16px 24px;
   border-left: 1px solid var(--line);
   border-top: 2px solid var(--gold);
   background: color-mix(in srgb, var(--ivory-200) calc(var(--step) * 30%), var(--paper));
@@ -2183,8 +2184,9 @@ main[tabindex='-1']:focus {
 }
 
 .level-ladder {
+  /* A1–C2: two rows of three. */
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 1px;
   background: var(--line);
   border: 1px solid var(--line);
@@ -5542,4 +5544,13 @@ button.person {
 }
 .call-meet.btn:hover {
   background: rgba(255, 255, 255, 0.2);
+}
+
+/* Placement entry points */
+.hero-level-link { display: inline-flex; align-items: center; gap: 6px; margin-top: 14px; color: var(--burgundy, #6e1630); font-size: 15px; text-decoration: none; }
+.hero-level-link:hover strong { text-decoration: underline; }
+.placement-welcome { margin: 0; padding: 12px 14px; border-radius: 12px; background: #f3e1e5; color: #141b34; }
+
+@media (max-width: 1200px) and (min-width: 901px) {
+  .stairs { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }

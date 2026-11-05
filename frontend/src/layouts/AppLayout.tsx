@@ -23,6 +23,7 @@ const NAV: Record<Role, NavGroup[]> = {
     { items: [{ to: '/app', key: 'app.dashboard', icon: 'home', end: true, mobile: true }] },
     { key: 'app.learn', items: [
       { to: '/app/courses', key: 'app.courses', icon: 'book', mobile: true },
+      { to: '/app/placement', key: 'app.placement', icon: 'award' },
       { to: '/app/passport', key: 'app.passport', icon: 'passport' },
       { to: '/app/vocabulary', key: 'app.vocabulary', icon: 'words' },
     ] },

@@ -85,6 +85,8 @@ export const en = {
   'home.sub': 'Structured courses, live classes and private conversation practice for professionals in Ghana, across Africa and beyond. Build confidence. Open new doors.',
   'home.cta': 'Start your French journey',
   'home.cta2': 'Explore courses',
+  'cta.findLevel': 'Find your level',
+  'cta.findLevelSub': 'free 15-minute test',
   'home.replay': 'Replay',
   'home.skipIntro': 'Skip animation',
   'home.trust1': 'A1–C2 pathways aligned to the CEFR',
@@ -134,7 +136,7 @@ export const en = {
   'courses.format': 'Format',
   'courses.level': 'Level',
   'courses.duration': 'Duration',
-  'courses.future': 'C1–C2 and family programmes are planned for a later phase.',
+  'courses.future': 'Children aged 4–15 learn through La Porte Kids, inside a parent’s account.',
   'courses.none': 'No courses match this filter.',
 
   'tutors.title': 'Meet the tutors',
@@ -401,7 +403,7 @@ export const en = {
   'admin.failedPayments': 'Failed payments',
 
   'home.pathEyebrow': 'Learning pathways',
-  'home.pathTitle': 'Four levels. One clear way up.',
+  'home.pathTitle': 'Six levels. One clear way up.',
   'home.pathSub': 'Every course sits on the CEFR scale, so you always know what you can do now and what the next level asks of you.',
   'home.pathWeeks': 'weeks, typical pace',
   'home.pathCourses': 'courses',
@@ -518,6 +520,8 @@ export const fr: Record<MessageKey, string> = {
   'home.sub': 'Des cours structurés, des classes en direct et des conversations privées pour les professionnels du Ghana, d’Afrique et d’ailleurs. Gagnez en assurance. Ouvrez de nouvelles portes.',
   'home.cta': 'Commencez votre parcours',
   'home.cta2': 'Découvrir les cours',
+  'cta.findLevel': 'Trouver mon niveau',
+  'cta.findLevelSub': 'test gratuit de 15 minutes',
   'home.replay': 'Rejouer',
   'home.skipIntro': 'Passer l’animation',
   'home.trust1': 'Parcours A1–C2 alignés sur le CECRL',
@@ -567,7 +571,7 @@ export const fr: Record<MessageKey, string> = {
   'courses.format': 'Format',
   'courses.level': 'Niveau',
   'courses.duration': 'Durée',
-  'courses.future': 'Les niveaux C1–C2 et les programmes famille sont prévus dans une phase ultérieure.',
+  'courses.future': 'Les enfants de 4 à 15 ans apprennent avec La Porte Kids, depuis le compte d’un parent.',
   'courses.none': 'Aucun cours ne correspond à ce filtre.',
 
   'tutors.title': 'Rencontrez les tuteurs',
@@ -834,7 +838,7 @@ export const fr: Record<MessageKey, string> = {
   'admin.failedPayments': 'Paiements échoués',
 
   'home.pathEyebrow': 'Parcours',
-  'home.pathTitle': 'Quatre niveaux. Une progression claire.',
+  'home.pathTitle': 'Six niveaux. Une progression claire.',
   'home.pathSub': 'Chaque cours se situe sur l’échelle du CECRL : vous savez toujours ce que vous pouvez faire et ce que demande le niveau suivant.',
   'home.pathWeeks': 'semaines, rythme habituel',
   'home.pathCourses': 'cours',

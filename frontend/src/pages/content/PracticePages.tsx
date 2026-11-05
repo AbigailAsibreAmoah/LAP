@@ -15,7 +15,7 @@ import {
 } from '@laporte/shared';
 import { AnimatePresence, motion } from 'motion/react';
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { Avatar } from '../../components/3d/Portrait';
 import { spring } from '../../components/animations/motion';
 import { EmptyState, Tabs } from '../../components/ui/Controls';
@@ -349,6 +349,8 @@ type Time = keyof typeof TIMES;
 export function PlacementPage() {
   const { t, l, lang } = useI18n();
   const fr = lang === 'fr';
+  const [params] = useSearchParams();
+  const welcome = params.get('welcome') === '1';
   const { content, learner, actions } = useStore();
   const toast = useToast();
   const existing = content.placements.find((p) => p.learnerId === learner.id);
@@ -390,6 +392,11 @@ export function PlacementPage() {
         <motion.section key={step} className="card placement-card" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={spring.settle}>
           {step === 0 && (
             <div className="stack" style={{ ['--gap' as string]: '16px' }}>
+              {welcome && (
+                <p className="placement-welcome" lang={fr ? 'fr' : undefined}>
+                  <strong>{fr ? 'Bienvenue à La Porte !' : 'Welcome to La Porte!'}</strong> {fr ? 'Commençons par trouver votre niveau, pour vous proposer le bon programme.' : 'Let’s start by finding your level, so we can suggest the right plan.'}
+                </p>
+              )}
               <h2 className="h3">{fr ? 'Comment ça marche' : 'How it works'}</h2>
               <ol className="steps-list">
                 <li>{fr ? `${PLACEMENT_QUESTIONS.length} questions courtes, du niveau A1 au C2` : `${PLACEMENT_QUESTIONS.length} short questions, from A1 to C2`}</li>

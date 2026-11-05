@@ -49,6 +49,11 @@ export function LivingAcademyHero() {
               {t('home.cta2')}
             </Link>
           </motion.div>
+          <motion.div variants={line}>
+            <Link to="/register?next=placement" className="hero-level-link">
+              <Icon name="award" size={16} /> <strong>{t('cta.findLevel')}</strong> · {t('cta.findLevelSub')} <Icon name="arrowRight" size={14} />
+            </Link>
+          </motion.div>
           <motion.ul variants={line} className="hero-facts">
             {(['home.trust1', 'home.trust2', 'home.trust3'] as const).map((k) => (
               <li key={k}>

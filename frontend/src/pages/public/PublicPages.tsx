@@ -110,6 +110,7 @@ export function CoursesPage({ inApp }: { inApp?: boolean }) {
             <h1>{t('app.courses')}</h1>
             <p className="muted">{t('courses.sub')}</p>
           </div>
+          <Link to="/app/placement" className="btn btn-secondary btn-sm"><Icon name="award" size={15} /> {t('cta.findLevel')}</Link>
         </div>
         {body}
       </>
@@ -117,7 +118,12 @@ export function CoursesPage({ inApp }: { inApp?: boolean }) {
 
   return (
     <>
-      <PageHero eyebrow={t('nav.courses')} title={t('courses.title')} sub={t('courses.sub')} />
+      <PageHero eyebrow={t('nav.courses')} title={t('courses.title')} sub={t('courses.sub')}>
+        <div className="row" style={{ ['--gap' as string]: '10px', marginTop: 18 }}>
+          <Link to="/register?next=placement" className="btn btn-primary"><Icon name="award" size={17} /> {t('cta.findLevel')}</Link>
+          <span className="small muted">{t('cta.findLevelSub')} · A1–C2</span>
+        </div>
+      </PageHero>
       <section className="section" style={{ paddingTop: 48 }}>
         <div className="container">{body}</div>
       </section>
@@ -324,13 +330,13 @@ export function HowItWorksPage() {
   const { t, lang } = useI18n();
   const blocks = lang === 'fr'
     ? [
-        ['Apprentissage en autonomie', 'Vidéos, lectures, quiz et devoirs écrits organisés en parcours A1–B2.'],
+        ['Apprentissage en autonomie', 'Vidéos, lectures, quiz et devoirs écrits organisés en parcours A1–C2.'],
         ['Classes en direct', 'Classes en groupe et séances privées sur Google Meet, réservées depuis votre espace.'],
         ['Speaking Studio', 'Scénarios réalistes pour s’entraîner à parler, avec expressions utiles et retours.'],
         ['Suivi et retours', 'Vos tuteurs commentent vos devoirs et enregistrent vos progrès dans votre passeport.'],
       ]
     : [
-        ['Self-paced learning', 'Videos, readings, quizzes and written assignments organised into A1–B2 pathways.'],
+        ['Self-paced learning', 'Videos, readings, quizzes and written assignments organised into A1–C2 pathways.'],
         ['Live classes', 'Group classes and private sessions on Google Meet, booked from your workspace.'],
         ['Speaking Studio', 'Realistic scenarios to practise speaking, with useful phrases and feedback.'],
         ['Feedback & tracking', 'Tutors review your work and record progress in your Performance Passport.'],
@@ -498,7 +504,7 @@ export function AboutPage() {
 
 export const FAQ = {
   en: [
-    ['Which levels do you teach?', 'Launch pathways cover CEFR levels A1 to B2. Advanced C1–C2 programmes and family learning are planned for a later phase.'],
+    ['Which levels do you teach?', 'Pathways cover every CEFR level, from A1 beginners to C2 mastery. Not sure where you are? Take the free 15-minute placement test. Children aged 4–15 learn through La Porte Kids.'],
     ['How do live classes work?', 'Live group classes and private sessions are planned to run on Google Meet, with links in your workspace. In this prototype, meeting creation is simulated.'],
     ['How do I pay?', 'Memberships are intended to be paid by Mobile Money or card through Paystack. Payment comes before paid bookings and premium course access. Checkout in this prototype is simulated.'],
     ['Can I cancel or reschedule a lesson?', 'Yes, from “My lessons”. The final cancellation and credit policy is still being confirmed with the institute.'],
@@ -506,7 +512,7 @@ export const FAQ = {
     ['Will I get reminders?', 'Email and WhatsApp reminders are planned. In this prototype they appear as sample notifications only.'],
   ],
   fr: [
-    ['Quels niveaux proposez-vous ?', 'Les parcours de lancement couvrent les niveaux A1 à B2 du CECRL. Les niveaux C1–C2 et l’offre famille sont prévus ultérieurement.'],
+    ['Quels niveaux proposez-vous ?', 'Nos parcours couvrent tous les niveaux du CECRL, du débutant A1 à la maîtrise C2. Vous ne connaissez pas votre niveau ? Passez le test de positionnement gratuit de 15 minutes. Les enfants de 4 à 15 ans apprennent avec La Porte Kids.'],
     ['Comment se déroulent les classes en direct ?', 'Les classes et séances privées sont prévues sur Google Meet, avec les liens dans votre espace. Dans ce prototype, la création des réunions est simulée.'],
     ['Comment payer ?', 'Les formules seront payables par Mobile Money ou carte via Paystack. Le paiement précède les réservations payantes et l’accès premium. Le paiement est simulé dans ce prototype.'],
     ['Puis-je annuler ou déplacer une séance ?', 'Oui, depuis « Mes séances ». La politique définitive d’annulation et de crédits est en cours de validation.'],
@@ -557,24 +563,36 @@ export function HelpPage() {
 /* ---------- Auth (simulated) ---------- */
 
 export function AuthPage({ mode }: { mode: 'login' | 'register' }) {
-  const { t, l } = useI18n();
+  const { t, l, lang } = useI18n();
   const navigate = useNavigate();
   const { actions } = useStore();
+  const [params] = useSearchParams();
+  const toPlacement = params.get('next') === 'placement';
   const enter = (role: 'learner' | 'instructor' | 'admin') => {
     actions.setRole(role);
     navigate(role === 'learner' ? '/app' : `/${role}`);
+  };
+  // New learners start with the placement test (they can still skip it and start at A1).
+  const submit = () => {
+    actions.setRole('learner');
+    navigate(mode === 'register' || toPlacement ? '/app/placement?welcome=1' : '/app');
   };
   return (
     <section style={{ background: 'radial-gradient(80% 100% at 80% 0%, #FFF6E6 0%, var(--ivory) 60%)', minHeight: 'calc(100vh - 72px)' }}>
       <div className="container" style={{ display: 'grid', placeItems: 'center', paddingBlock: 56 }}>
         <motion.div className="card" style={{ width: 'min(480px, 100%)', ['--pad' as string]: '32px', boxShadow: 'var(--shadow-3)' }} initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={spring.settle}>
           <h1 style={{ fontSize: '2rem' }}>{mode === 'login' ? t('auth.loginTitle') : t('auth.registerTitle')}</h1>
+          {(mode === 'register' || toPlacement) && (
+            <p className="small muted" style={{ marginTop: 6 }}>
+              {lang === 'fr' ? 'Ensuite : un test de positionnement de 15 minutes pour trouver votre niveau (vous pouvez le passer et commencer au niveau A1).' : 'Next: a 15-minute placement test to find your level (you can skip it and start at A1).'}
+            </p>
+          )}
           <form
             className="stack"
             style={{ ['--gap' as string]: '14px', marginTop: 20 }}
             onSubmit={(e) => {
               e.preventDefault();
-              enter('learner');
+              submit();
             }}
           >
             {mode === 'register' && (
