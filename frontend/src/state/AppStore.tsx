@@ -1,4 +1,4 @@
-import { BOOKINGS, CLOCK_FIXED, DEMO_LEARNER_ID, DEMO_TODAY, DEMO_TUTOR_ID, LEARNERS, MESSAGE_THREADS, MILESTONES, NOTIFICATIONS, PAYMENTS, TUTORS, VOCABULARY, CONTACT_BLOCK_MESSAGE, SEED_SHIFT_DAYS, shiftIso, canContact, isClassmate, communityOps, type Cohort, type SessionPurpose, nowIso, findContactDetails, pointsFor, questProgress, seedContent, visibleContent, type AppNotification, type ContentState, type ContentUser, type LessonInput, type LessonPatch, type PackInput, type PlacementInput, type QuestId, type TransitionAction, type Booking, type Learner, type MessageThread, type Milestone, type Payment, type PaymentMethod, type Role, type VocabEntry, ownedBy, type SignUpInput } from '@laporte/shared';
+import { BOOKINGS, CLOCK_FIXED, DEMO_LEARNER_ID, DEMO_TODAY, DEMO_TUTOR_ID, LEARNERS, MESSAGE_THREADS, MILESTONES, NOTIFICATIONS, PAYMENTS, TUTORS, VOCABULARY, CONTACT_BLOCK_MESSAGE, SEED_SHIFT_DAYS, shiftIso, canContact, isClassmate, communityOps, type Cohort, type SessionPurpose, nowIso, findContactDetails, pointsFor, questProgress, seedContent, visibleContent, type AppNotification, type ContentState, type ContentUser, type LessonInput, type LessonPatch, type PackInput, type PlacementInput, type QuestId, type TransitionAction, type Booking, type Learner, type MessageThread, type Milestone, type Payment, type PaymentMethod, type Role, type VocabEntry, ownedBy, type SignUpInput, type CafeOp } from '@laporte/shared';
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 import { computeAvailability, type Slot } from '../features/bookings/availability';
 import { api, type ServerSnapshot, type UploadMeta } from '../services/api';
@@ -351,6 +351,9 @@ function useStoreValue() {
         return thread.id;
       },
     },
+
+    /** Le Café La Porte: every action goes through the shared café rules. */
+    cafe: <A,>(op: CafeOp, args: A) => contentRun((s, u) => api.cafe.run(s, u, op, args)),
 
     /** Spaced-repetition review of the learner's vocabulary. */
     reviewWord: (vocabId: string, grade: Parameters<typeof api.review.review>[3]) => contentRun((s, u) => api.review.review(s, u, vocabId, grade)),

@@ -29,6 +29,7 @@ const MessagesPage = named(() => import('./pages/shared/MessagesPage'), 'Message
 const KidsProfilesPage = named(() => import('./pages/kids/KidsPages'), 'KidsProfilesPage');
 const KidModePage = named(() => import('./pages/kids/KidsPages'), 'KidModePage');
 const StartPage = named(() => import('./pages/onboarding/StartPage'), 'StartPage');
+const CafePage = named(() => import('./pages/cafe/CafePage'), 'CafePage');
 const KidsGamesHostPage = named(() => import('./pages/kids/HostGamesPage'), 'KidsGamesHostPage');
 const InstructorDashboard = named(() => import('./pages/instructor/InstructorPages'), 'InstructorDashboard');
 const AvailabilityPage = named(() => import('./pages/instructor/InstructorPages'), 'AvailabilityPage');
@@ -89,6 +90,7 @@ export function App() {
                   <Route path="checkout/:planId" element={<CheckoutPage />} />
                   <Route path="help" element={<LearnerHelpPage />} />
                   <Route path="kids" element={<KidsProfilesPage />} />
+                  <Route path="cafe" element={<CafePage />} />
                 </Route>
                 <Route path="instructor" element={<AppLayout role="instructor" />}>
                   <Route index element={<InstructorDashboard />} />
@@ -100,6 +102,7 @@ export function App() {
                   <Route path="immersion" element={<ImmersionPage />} />
                   <Route path="groups" element={<GroupsPage />} />
                   <Route path="games" element={<KidsGamesHostPage />} />
+                  <Route path="cafe" element={<CafePage />} />
                 </Route>
                 <Route path="admin" element={<AppLayout role="admin" />}>
                   <Route index element={<AdminPage />} />
@@ -108,6 +111,7 @@ export function App() {
                   <Route path="immersion" element={<ImmersionPage />} />
                   <Route path="groups" element={<GroupsPage />} />
                   <Route path="games" element={<KidsGamesHostPage />} />
+                  <Route path="cafe" element={<CafePage />} />
                   <Route path=":section" element={<AdminPage />} />
                 </Route>
                 {/* Child mode sits outside the app layout: no sidebar, classmates, messages or calls. */}

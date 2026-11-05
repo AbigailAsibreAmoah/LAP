@@ -129,6 +129,8 @@ export const reportSchema = z.object({ threadId: z.string().min(1), messageId: z
 const kidGame = z.enum(['quiz', 'memory', 'builder', 'listen', 'speak', 'live', 'story']);
 export const kidCreateSchema = z.object({ name: z.string().trim().min(2).max(30), age: z.number().int().min(4).max(15), level: z.enum(['A1', 'A2']), avatar: z.number().int().min(0).max(7), pin: z.string().regex(/^\d{4}$/) });
 export const kidUpdateSchema = z.object({
+  library: z.array(z.string().min(1).max(40)).max(60).optional(),
+  bookPick: z.object({ week: z.string().max(12), bookIds: z.array(z.string().min(1).max(40)).max(4) }).optional(),
   name: z.string().trim().min(2).max(30).optional(),
   age: z.number().int().min(4).max(15).optional(),
   level: z.enum(['A1', 'A2']).optional(),

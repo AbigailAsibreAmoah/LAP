@@ -64,7 +64,8 @@ export function MessagesPage() {
   const labelOf = (th: MessageThread) => {
     const o = otherOf(th);
     if (o.startsWith('tut-')) return lang === 'fr' ? 'Tuteur·rice' : 'Tutor';
-    if (o.startsWith('lrn-')) return lang === 'fr' ? 'Camarade' : 'Classmate';
+    // Learners see other learners as classmates; tutors and admins see them as learners.
+    if (o.startsWith('lrn-')) return userId.startsWith('lrn-') ? (lang === 'fr' ? 'Camarade' : 'Classmate') : lang === 'fr' ? 'Apprenant·e' : 'Learner';
     return lang === 'fr' ? 'Assistance' : 'Support';
   };
   const unread = useUnread(threads, userId);

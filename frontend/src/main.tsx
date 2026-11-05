@@ -5,6 +5,8 @@ import './styles/global.css';
 import './styles/kids.css';
 import './styles/access.css';
 import './styles/practice.css';
+import './styles/cafe.css';
+import './styles/books.css';
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

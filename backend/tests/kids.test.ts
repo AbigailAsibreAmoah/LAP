@@ -52,6 +52,20 @@ describe('kids profiles', () => {
   });
 });
 
+describe('kids books', () => {
+  it('keeps a private library and the parent’s weekly book choice on the child’s profile', async () => {
+    const r = await request(app).patch('/api/kids/kid-kwame').send({ library: ['bk-baobab', 'bk-tambour'], bookPick: { week: '2026-W45', bookIds: ['bk-tambour', 'bk-lion', 'bk-radio', 'bk-lettre'] } });
+    expect(r.status).toBe(200);
+    expect(r.body.kid.library).toEqual(['bk-baobab', 'bk-tambour']);
+    expect(r.body.kid.bookPick.bookIds).toHaveLength(4);
+    // No more than four books a week.
+    expect((await request(app).patch('/api/kids/kid-kwame').send({ bookPick: { week: '2026-W45', bookIds: ['a', 'b', 'c', 'd', 'e'] } })).status).toBe(400);
+    // Another family can neither see nor change it.
+    expect((await request(app).patch('/api/kids/kid-kwame').set('x-demo-user', 'lrn-kofi').send({ library: [] })).status).toBe(403);
+    expect((await request(app).get('/api/content').set('x-demo-user', 'lrn-kofi')).body.kids).toEqual([]);
+  });
+});
+
 describe('game rules', () => {
   it('builds quizzes with exactly one right answer and rewards speed', () => {
     for (const unit of KID_UNITS) for (const q of quizFor(unit, 5)) expect(q.answer).toBeGreaterThanOrEqual(0);

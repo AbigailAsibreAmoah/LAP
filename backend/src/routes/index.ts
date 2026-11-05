@@ -17,6 +17,7 @@ import { classmateMessaging } from '../services/engagementService';
 import { kidsService, liveGameService } from '../services/kidsService';
 import { placementService } from '../services/placementService';
 import { authService } from '../services/authService';
+import { runCafe } from '../services/cafeService';
 import {
   addVocabularySchema,
   assignPackSchema,
@@ -130,6 +131,8 @@ api.post('/content/assignments', staff, validateBody(assignPackSchema), contentC
 api.post('/content/assignments/:id/submit', requireRole('learner'), validateBody(responseSchema), contentController.submitAssignment);
 api.post('/content/assignments/:id/review', staff, validateBody(feedbackSchema), contentController.reviewAssignment);
 api.post('/me/quests/claim', requireRole('learner'), validateBody(claimQuestSchema), contentController.claimQuest);
+/* Le Café La Porte: members only (children never reach it: child mode has no API session of its own). */
+api.post('/cafe/:op', (req, res) => res.json(runCafe(req.demoUser, req.params.op, req.body)));
 /* Demo accounts (no passwords in the prototype). */
 api.post('/auth/register', validateBody(registerSchema), (req, res) => res.status(201).json(authService.register(req.body)));
 api.post('/auth/login', validateBody(loginSchema), (req, res) => res.json(authService.login(req.body.email)));

@@ -6,6 +6,7 @@ import { shiftDatesInPlace } from './clock';
 import type { Cohort, Follow, RewardToken } from './community';
 import type { ExternalGame, KidActivity, KidProfile } from './kids';
 import type { ReviewDay, VocabReview } from './review';
+import { frenchPostsSince, visibleCafe, type CafeState } from './cafe';
 import type { PlacementResult } from './policies';
 import type { CefrLevel, LessonKind, Localized, Phrase, QuizQuestion, Role } from './types';
 
@@ -169,6 +170,8 @@ export interface ContentState {
   /** Spaced-repetition schedule for each learner's vocabulary, and reviews per day. */
   vocabReviews: VocabReview[];
   reviewDays: ReviewDay[];
+  /** Le Café La Porte (optional so content saved before the café still loads). */
+  cafe?: CafeState;
 }
 
 export const REPORT_REASONS = {
@@ -211,6 +214,7 @@ export const QUESTS = {
   'quiz-ace-3': { icon: 'star', target: 3, points: 15, title: L('Ace 3 quizzes first time', 'Réussir 3 quiz du premier coup') },
   'lessons-2': { icon: 'book', target: 2, points: 10, title: L('Finish 2 lessons this week', 'Terminer 2 leçons cette semaine') },
   'practice-1': { icon: 'mic', target: 1, points: 10, title: L('Complete 1 practice from your tutor', 'Faire 1 exercice de votre tuteur') },
+  'cafe-french-2': { icon: 'message', target: 2, points: 10, title: L('Write 2 posts in French in the Café', 'Écrire 2 messages en français au Café') },
 } as const;
 export type QuestId = keyof typeof QUESTS;
 
@@ -231,6 +235,7 @@ export function questProgress(state: ContentState, learner: { id: string; streak
     'quiz-ace-3': recent.filter((c) => c.quizScore && c.quizScore.total > 0 && c.quizScore.correct === c.quizScore.total).length,
     'lessons-2': recent.length,
     'practice-1': state.assignments.filter((a) => a.learnerId === learner.id && a.submittedAt && a.submittedAt >= since).length,
+    'cafe-french-2': frenchPostsSince(state, learner.id, since),
   };
   return (Object.keys(QUESTS) as QuestId[]).map((id) => {
     const q = QUESTS[id];
@@ -349,6 +354,7 @@ export function visibleContent(state: ContentState, user: ContentUser): ContentS
       kidActivities: [],
       vocabReviews: [],
       reviewDays: [],
+      cafe: visibleCafe(state, user),
     };
   return {
     ...state,
@@ -364,6 +370,7 @@ export function visibleContent(state: ContentState, user: ContentUser): ContentS
     // A parent sees only their own children.
     kids: state.kids.filter((k) => k.parentId === user.id),
     vocabReviews: state.vocabReviews.filter((r) => r.learnerId === user.id),
+    cafe: visibleCafe(state, user),
     reviewDays: state.reviewDays.filter((d) => d.learnerId === user.id),
     kidActivities: state.kidActivities.filter((a) => state.kids.some((k) => k.id === a.kidId && k.parentId === user.id)),
     // Group answers are visible to the instructor only; a learner sees their own — and, when the instructor
@@ -828,7 +835,7 @@ const SEED_ASSIGNMENTS: PackAssignment[] = [
 ];
 
 /** Lessons, media, packs and progress; community.ts adds cohorts, follows and rewards. */
-export function seedContentBase(): Omit<ContentState, 'cohorts' | 'follows' | 'tokens' | 'leaderboardOptOut' | 'reports' | 'kids' | 'kidActivities' | 'externalGames' | 'vocabReviews' | 'reviewDays'> {
+export function seedContentBase(): Omit<ContentState, 'cohorts' | 'follows' | 'tokens' | 'leaderboardOptOut' | 'reports' | 'kids' | 'kidActivities' | 'externalGames' | 'vocabReviews' | 'reviewDays' | 'cafe'> {
   const { lessons, media } = seedLessons();
   return shiftDatesInPlace({
     lessons,

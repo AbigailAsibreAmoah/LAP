@@ -1,0 +1,77 @@
+/* ---------- Le Café La Porte: one calm column, no busy sidebars ---------- */
+.cafe-tabs { display: flex; gap: 6px; margin-bottom: 18px; border-bottom: 1px solid var(--line, #ece4d8); }
+.cafe-tab { display: inline-flex; align-items: center; gap: 6px; padding: 10px 14px; border: 0; border-bottom: 2px solid transparent; background: none; color: var(--ink-2, #4a5068); font-weight: 600; cursor: pointer; }
+.cafe-tab[aria-selected='true'] { border-bottom-color: #6e1630; color: #6e1630; }
+.cafe-col { display: grid; gap: 14px; max-width: 760px; }
+.cafe-filters { gap: 8px; flex-wrap: wrap; }
+.cafe-sort { width: auto; min-height: 34px; padding-block: 4px; }
+.cafe-empty { display: grid; justify-items: center; gap: 4px; padding: 28px; text-align: center; font-size: 28px; }
+
+.cafe-composer { display: grid; gap: 8px; }
+.cafe-composer textarea { resize: vertical; min-height: 84px; }
+.cafe-composer-bar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.cafe-space-select { width: auto; min-height: 34px; padding-block: 4px; font-size: 13px; }
+.cafe-toggle { display: inline-flex; align-items: center; gap: 5px; font-size: 13px; color: var(--ink-2, #4a5068); cursor: pointer; }
+.cafe-toggle input { accent-color: #6e1630; }
+.cafe-hint { margin: 0; }
+
+.cafe-post { display: grid; gap: 10px; }
+.cafe-post[data-kind='challenge'] { border: 2px solid #e7c78f; background: linear-gradient(180deg, #fffaf0 0%, #fff 70%); }
+.cafe-post[data-hidden] { opacity: 0.6; }
+.cafe-pin { justify-self: start; padding: 2px 10px; border-radius: 999px; background: #fff3d6; color: #8a5a12; font-size: 12px; font-weight: 700; }
+.cafe-post-head { display: flex; align-items: flex-start; gap: 10px; }
+.cafe-avatar-lp { display: grid; flex: none; place-items: center; width: 38px; height: 38px; border-radius: 50%; background: #141b34; color: #e7c78f; font-size: 12px; font-weight: 800; }
+.cafe-sub { min-height: 20px; padding: 0 8px; font-size: 11px; }
+.cafe-kind { color: #6e1630; font-weight: 700; }
+.cafe-text { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 15px; line-height: 1.55; color: var(--ink, #141b34); }
+.cafe-text[data-emoji-only] { font-size: 34px; line-height: 1.2; }
+.cafe-link { color: #6e1630; text-decoration: underline; text-underline-offset: 2px; }
+.cafe-linkcards { display: grid; gap: 6px; }
+.cafe-linkcard { display: flex; align-items: center; gap: 10px; padding: 8px 12px; border: 1px solid var(--line, #ece4d8); border-radius: 12px; background: #faf6ef; color: inherit; text-decoration: none; }
+.cafe-linkcard:hover { border-color: #c49a5a; }
+.cafe-linkcard span:last-child { display: grid; min-width: 0; }
+.cafe-linkcard .tiny { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cafe-linkcard-icon { font-size: 18px; }
+.cafe-post-foot { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.cafe-menu-wrap, .reaction-add-wrap, .emoji-anchor { position: relative; }
+.cafe-menu { position: absolute; right: 0; top: 100%; z-index: 20; display: grid; min-width: 180px; padding: 6px; border: 1px solid var(--line, #ece4d8); border-radius: 12px; background: #fff; box-shadow: 0 12px 30px -12px rgba(20, 27, 52, 0.3); }
+.cafe-menu button { padding: 8px 10px; border: 0; border-radius: 8px; background: none; text-align: left; font-size: 14px; cursor: pointer; }
+.cafe-menu button:hover { background: #faf6ef; }
+
+.cafe-comments { display: grid; gap: 10px; padding-top: 10px; border-top: 1px solid var(--line, #ece4d8); }
+.cafe-comment { display: flex; gap: 8px; align-items: flex-start; }
+.cafe-comment[data-accepted] { padding: 8px; border-radius: 12px; background: #e2f0e7; }
+.cafe-comment[data-hidden] { opacity: 0.55; }
+.cafe-comment .cafe-text { font-size: 14px; }
+.cafe-verified { margin-left: 8px; padding: 1px 8px; border-radius: 999px; background: #1f6b4f; color: #fff; font-size: 11px; font-weight: 700; }
+.cafe-reply { display: flex; gap: 8px; }
+
+/* Reactions and emoji */
+.cafe-reactions { display: inline-flex; align-items: center; gap: 4px; flex-wrap: wrap; }
+.reaction-chip { display: inline-flex; align-items: center; gap: 4px; min-height: 28px; padding: 0 9px; border: 1px solid var(--line, #ece4d8); border-radius: 999px; background: #fff; font-size: 14px; cursor: pointer; }
+.reaction-chip[data-mine] { border-color: #6e1630; background: #f3e1e5; color: #6e1630; }
+.reaction-add { color: var(--muted, #8a8f9c); font-size: 13px; }
+.reaction-quick { position: absolute; bottom: 100%; left: 0; z-index: 20; display: flex; gap: 2px; margin-bottom: 4px; padding: 4px; border: 1px solid var(--line, #ece4d8); border-radius: 999px; background: #fff; box-shadow: 0 10px 24px -12px rgba(20, 27, 52, 0.35); }
+.emoji-btn { display: grid; place-items: center; width: 34px; height: 34px; border: 0; border-radius: 8px; background: none; font-size: 20px; cursor: pointer; }
+.emoji-btn:hover, .emoji-btn:focus-visible { background: #faf6ef; }
+.emoji-picker { position: absolute; z-index: 30; top: 100%; left: 0; display: grid; gap: 8px; width: min(320px, 86vw); margin-top: 4px; padding: 10px; border: 1px solid var(--line, #ece4d8); border-radius: 14px; background: #fff; box-shadow: 0 16px 40px -16px rgba(20, 27, 52, 0.4); }
+.reaction-add-wrap .emoji-picker { top: auto; bottom: 100%; margin: 0 0 4px; }
+.emoji-row { display: flex; flex-wrap: wrap; }
+.emoji-grid { display: grid; grid-template-columns: repeat(8, 1fr); max-height: 200px; overflow-y: auto; }
+
+/* Spaces */
+.cafe-spaces { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 12px; }
+.cafe-space { display: grid; gap: 10px; align-content: space-between; }
+.cafe-space-main { display: grid; gap: 4px; justify-items: start; padding: 0; border: 0; background: none; text-align: left; cursor: pointer; }
+.cafe-space-emoji { font-size: 28px; }
+.cafe-space-head { display: flex; align-items: center; gap: 14px; font-size: 40px; }
+.cafe-space-head p { margin: 2px 0 0; }
+
+/* Study groups */
+.cafe-group { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.cafe-group-head { display: flex; align-items: flex-start; gap: 12px; flex-wrap: wrap; }
+.cafe-group-members { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+.cafe-member { display: grid; justify-items: center; gap: 2px; }
+.cafe-sessions { display: grid; gap: 8px; margin: 10px 0 0; padding: 0; list-style: none; }
+.cafe-sessions li { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 8px 10px; border-radius: 10px; background: #faf6ef; }
+.cafe-sessions li button { margin-left: auto; }

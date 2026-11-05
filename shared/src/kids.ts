@@ -49,6 +49,11 @@ export interface KidProfile {
   settings: KidSettings;
   /** Minutes played per day (YYYY-MM-DD). */
   usage: Record<string, number>;
+  /** The child's private library: books saved to read again (only this family sees it). */
+  library?: string[];
+  /** A parent's choice of book for a given week (otherwise the next book in turn). */
+  /** A parent's choice of this week's books (up to four). */
+  bookPick?: { week: string; bookIds: string[] };
   createdAt: string;
 }
 
@@ -254,7 +259,9 @@ export const kidOps = {
     return { state: next, kid };
   },
 
-  updateKid(state: ContentState, ctx: Ctx, kidId: string, patch: Partial<Pick<KidProfile, 'name' | 'age' | 'level' | 'avatar' | 'pin'>> & { settings?: Partial<KidSettings> }) {
+  updateKid(state: ContentState, ctx: Ctx, kidId: string, patch: Partial<Pick<KidProfile, 'name' | 'age' | 'level' | 'avatar' | 'pin' | 'library' | 'bookPick'>> & { settings?: Partial<KidSettings> }) {
+    if (patch.library && (patch.library.length > 60 || patch.library.some((b) => typeof b !== 'string' || b.length > 40))) fail(422, 'invalid_library', 'Invalid library');
+    if (patch.bookPick && (!Array.isArray(patch.bookPick.bookIds) || patch.bookPick.bookIds.length > 4 || patch.bookPick.bookIds.some((b) => typeof b !== 'string' || b.length > 40))) fail(422, 'invalid_book_pick', 'Choose up to four books');
     const next = structuredClone(state);
     const kid = ownKid(next, ctx, kidId);
     if (patch.pin !== undefined && !/^\d{4}$/.test(patch.pin)) fail(422, 'invalid_pin', 'Choose a 4-digit PIN.');

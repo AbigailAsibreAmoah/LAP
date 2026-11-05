@@ -1,6 +1,6 @@
 // Domain service interface used by the UI. Each call goes to the backend when it
 // is reachable and falls back to the offline demo adapter otherwise.
-import { buildPlacementResult, communityOps, ContentError, contentOps, kidOps, reviewOps, type ReviewGrade, DEMO_LEARNER_ID, nowIso, type AppNotification, type Booking, type Cohort, type ContentState, type ContentUser, type LessonInput, type LessonPatch, type Learner, type MediaAsset, type MessageThread, type PackInput, type Payment, type PaymentMethod, type PlacementInput, type PlacementResult, type QuestId, type SessionPurpose, type SpeakingFeedback, type TransitionAction, type VocabEntry, type PlacementItem, newLearner, normEmail, validEmail, type SignUpInput } from '@laporte/shared';
+import { buildPlacementResult, communityOps, ContentError, contentOps, kidOps, reviewOps, type ReviewGrade, DEMO_LEARNER_ID, nowIso, type AppNotification, type Booking, type Cohort, type ContentState, type ContentUser, type LessonInput, type LessonPatch, type Learner, type MediaAsset, type MessageThread, type PackInput, type Payment, type PaymentMethod, type PlacementInput, type PlacementResult, type QuestId, type SessionPurpose, type SpeakingFeedback, type TransitionAction, type VocabEntry, type PlacementItem, newLearner, normEmail, validEmail, type SignUpInput, cafeOps, type CafeOp } from '@laporte/shared';
 import { demoAdapter } from './demo/demoAdapter';
 import { ApiError, detectApi, markApiUnavailable, request, upload } from './http';
 
@@ -32,6 +32,10 @@ async function contentCall<R extends { state: ContentState }>(user: ContentUser,
 export type UploadMeta = { title: string; accent?: MediaAsset['accent']; speaker?: string; transcript?: string; durationSec: number; replaceId?: string };
 
 type KidPatch = Parameters<typeof kidOps.updateKid>[3];
+export const cafeApi = {
+  run: <A,>(s: ContentState, user: ContentUser, op: CafeOp, args: A) => contentCall(user, `/cafe/${op}`, 'POST', args, () => (cafeOps[op] as unknown as (st: ContentState, ctx: ReturnType<typeof localCtx>, a: A) => { state: ContentState })(s, localCtx(user), args)),
+};
+
 export const reviewApi = {
   review: (s: ContentState, user: ContentUser, vocabId: string, grade: ReviewGrade) => contentCall(user, `/me/vocabulary/${vocabId}/review`, 'POST', { grade }, () => reviewOps.reviewWord(s, localCtx(user), vocabId, grade)),
 };
@@ -226,6 +230,7 @@ export const api = {
   community: communityApi,
   kids: kidsApi,
   review: reviewApi,
+  cafe: cafeApi,
 
   /** Returns the server's entry (with its id) when connected, otherwise null. */
   async addVocabulary(entry: { fr: string; en: string; example: string; source: string }, userId: string = DEMO_LEARNER_ID): Promise<VocabEntry | null> {

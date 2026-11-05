@@ -10,6 +10,11 @@ import { useToast } from '../../components/ui/Toasts';
 import { BuilderGame, LearnWords, ListenGame, LivePlayerView, MemoryGame, QuizGame, SpeakGame, Stars } from '../../features/kids/KidGames';
 import { isLocalGame, liveClient } from '../../features/kids/liveClient';
 import { StoryTime } from '../../features/kids/StoryTime';
+import { BookObject, BookReader } from '../../features/kids/books/Books';
+import { autoBooksOfTheWeek, bandFor, BOOKS, booksForAge, booksOfTheWeek, BOOKS_PER_WEEK, weekKey } from '../../features/kids/books/stories';
+
+/** Each book counts towards a world in the child's progress. */
+const BOOK_WORLD: Record<string, string> = { 'bk-doudou': 'ku-bonjour', 'bk-chevre': 'ku-animaux', 'bk-pagne': 'ku-couleurs', 'bk-pluie': 'ku-nombres', 'bk-baobab': 'ku-famille', 'bk-tambour': 'ku-famille', 'bk-pirogue': 'ku-animaux', 'bk-aminata': 'ku-bonjour' };
 import { useI18n } from '../../i18n/I18nProvider';
 import { useStore } from '../../state/AppStore';
 import { formatDate } from '../../utils/format';
@@ -181,6 +186,8 @@ function KidOverview({ kid }: { kid: KidProfile }) {
         </div>
       </section>
 
+      <KidBooksCard kid={kid} />
+
       <section className="card" aria-labelledby="kid-week">
         <div className="row between" style={{ marginBottom: 10 }}><h2 id="kid-week" className="h4">{fr ? 'Cette semaine' : 'This week'}</h2><span className="tiny muted">{week} min</span></div>
         <div className="kid-week">
@@ -204,6 +211,65 @@ function KidOverview({ kid }: { kid: KidProfile }) {
         )}
       </section>
     </>
+  );
+}
+
+/** Parents choose this week's book (from the child's age group) and manage the child's private library. */
+function KidBooksCard({ kid }: { kid: KidProfile }) {
+  const { lang } = useI18n();
+  const fr = lang === 'fr';
+  const { actions } = useStore();
+  const toast = useToast();
+  const today = nowIso();
+  const catalogue = booksForAge(kid.age);
+  const weekly = booksOfTheWeek(kid.age, today, kid.bookPick);
+  const auto = autoBooksOfTheWeek(kid.age, today);
+  const picked = kid.bookPick && kid.bookPick.week === weekKey(today);
+  const library = kid.library ?? [];
+  const setWeek = (ids: string[], msg: string) => save({ bookPick: { week: weekKey(today), bookIds: ids } }, msg);
+  const save = (patch: Parameters<typeof actions.kids.update>[1], msg: string) => actions.kids.update(kid.id, patch).then(() => toast(msg)).catch((e) => toast(errText(e)));
+  return (
+    <section className="card stack" style={{ ['--gap' as string]: '14px' }} aria-labelledby="kid-books-h">
+      <div className="row between">
+        <h2 id="kid-books-h" className="h4">📚 {fr ? 'Livres' : 'Books'}</h2>
+        <span className="chip">{fr ? `Pour les ${bandFor(kid.age).label} ans` : `Ages ${bandFor(kid.age).label}`}</span>
+      </div>
+      <p className="tiny muted" style={{ margin: 0 }}>{fr ? `${kid.name} voit uniquement les livres de son âge. ${BOOKS_PER_WEEK} nouveaux livres arrivent chaque lundi ; vous pouvez les changer quand vous voulez.` : `${kid.name} only sees books for their age. ${BOOKS_PER_WEEK} new books arrive every Monday; you can change them whenever you like.`}</p>
+      <div>
+        <div className="row between">
+          <span className="label">{fr ? 'Livres de la semaine' : 'This week’s books'} ({weekly.length}/{BOOKS_PER_WEEK})</span>
+          {picked && <button type="button" className="btn btn-ghost btn-sm" onClick={() => void setWeek(auto.map((x) => x.id), fr ? 'Sélection automatique rétablie' : 'Back to the automatic choice')}>{fr ? 'Choix automatique' : 'Automatic choice'}</button>}
+        </div>
+        <div className="kid-lib-list">
+          {catalogue.map((bk) => {
+            const on = weekly.some((x) => x.id === bk.id);
+            const ids = weekly.map((x) => x.id);
+            return (
+              <label key={bk.id} className="kid-toggle">
+                <span lang="fr">{bk.title}</span>
+                <input type="checkbox" checked={on} disabled={!on && ids.length >= BOOKS_PER_WEEK} onChange={() => void setWeek(on ? ids.filter((x) => x !== bk.id) : [...ids, bk.id], on ? (fr ? 'Livre retiré de la semaine' : 'Book removed from this week') : fr ? 'Livre ajouté à la semaine' : 'Book added to this week')} />
+              </label>
+            );
+          })}
+        </div>
+        <p className="tiny muted" style={{ marginTop: 6 }}>{fr ? `Pour changer, décochez un livre puis cochez-en un autre (${BOOKS_PER_WEEK} maximum). Lundi prochain, une nouvelle sélection arrive.` : `To swap, untick a book and tick another (${BOOKS_PER_WEEK} at most). Next Monday, a new set arrives.`}</p>
+      </div>
+      <div>
+        <span className="label">{fr ? 'Bibliothèque privée' : 'Private library'} ({library.length})</span>
+        <div className="kid-lib-list">
+          {catalogue.map((b) => {
+            const inLib = library.includes(b.id);
+            return (
+              <label key={b.id} className="kid-toggle">
+                <span lang="fr">{b.title}</span>
+                <input type="checkbox" checked={inLib} onChange={() => void save({ library: inLib ? library.filter((x) => x !== b.id) : [...library, b.id] }, inLib ? (fr ? 'Retiré de la bibliothèque' : 'Removed from the library') : fr ? 'Ajouté à la bibliothèque' : 'Added to the library')} />
+              </label>
+            );
+          })}
+        </div>
+        <p className="tiny muted" style={{ marginTop: 6 }}>{fr ? 'Seuls vous et votre enfant voyez cette bibliothèque.' : 'Only you and your child can see this library.'}</p>
+      </div>
+    </section>
   );
 }
 
@@ -251,7 +317,7 @@ function KidSettingsCard({ kid }: { kid: KidProfile }) {
 
 /* ======================= Child mode ======================= */
 
-type Screen = { kind: 'home' } | { kind: 'world'; unit: KidUnit } | { kind: 'play'; unit: KidUnit; game: KidGame } | { kind: 'live'; code: string; playerId: string; unitId: string; practice: boolean };
+type Screen = { kind: 'home' } | { kind: 'book'; id: string } | { kind: 'world'; unit: KidUnit } | { kind: 'play'; unit: KidUnit; game: KidGame } | { kind: 'live'; code: string; playerId: string; unitId: string; practice: boolean };
 
 export function KidModePage() {
   const { id } = useParams();
@@ -264,6 +330,10 @@ export function KidModePage() {
   const [screen, setScreen] = useState<Screen>({ kind: 'home' });
   const [gate, setGate] = useState<null | { reason: 'exit' } | { reason: 'external'; url: string }>(null);
   const [joinOpen, setJoinOpen] = useState(false);
+  // Books this child has finished (kept on this device, per child).
+  const booksKey = `laporte-books-read-${id}`;
+  const [booksRead, setBooksRead] = useState<string[]>(() => { try { return JSON.parse(localStorage.getItem(booksKey) ?? '[]') as string[]; } catch { return []; } });
+  const markBookRead = (bookId: string) => setBooksRead((list) => { const next = list.includes(bookId) ? list : [...list, bookId]; try { localStorage.setItem(booksKey, JSON.stringify(next)); } catch { /* storage unavailable */ } return next; });
 
   useEffect(() => {
     document.title = kid ? `${kid.name} · La Porte Kids` : 'La Porte Kids';
@@ -328,6 +398,38 @@ export function KidModePage() {
                     </div>
                     {kid.settings.liveGames && <button className="btn btn-brand kid-live-btn" onClick={() => setJoinOpen(true)}>📡 {fr ? 'Jeu en direct' : 'Live game'}</button>}
                   </section>
+                  {(() => {
+                    // One age group throughout: this child only sees books written for their age.
+                    const weekly = booksOfTheWeek(kid.age, nowIso(), kid.bookPick);
+                    const library = (kid.library ?? []).map((id) => BOOKS.find((b) => b.id === id)).filter((b): b is (typeof BOOKS)[number] => !!b && booksForAge(kid.age).includes(b));
+                    return (
+                      <div className="bk-shelves">
+                        <section className="bk-shelf bk-shelf-week" aria-labelledby="kid-week-book">
+                          <div className="bk-shelf-head">
+                            <h2 id="kid-week-book" lang="fr">Les livres de la semaine</h2>
+                            <span className="small">{fr ? `Pour les ${bandFor(kid.age).label} ans · ${BOOKS_PER_WEEK} nouveaux livres chaque lundi` : `For ages ${bandFor(kid.age).label} · ${BOOKS_PER_WEEK} new books every Monday`}</span>
+                          </div>
+                          <div className="bk-fan">
+                            {weekly.map((b) => <BookObject key={b.id} book={b} read={booksRead.includes(b.id)} onOpen={() => setScreen({ kind: 'book', id: b.id })} />)}
+                          </div>
+                        </section>
+                        <section className="bk-shelf bk-shelf-private" aria-labelledby="kid-library">
+                          <div className="bk-shelf-head">
+                            <h2 id="kid-library" lang="fr">🔒 Ma bibliothèque</h2>
+                            <span className="small">{fr ? 'Tes livres à relire' : 'Your books to read again'}</span>
+                          </div>
+                          {library.length ? (
+                            <div className="bk-fan">
+                              {library.map((b) => <BookObject key={b.id} book={b} read={booksRead.includes(b.id)} onOpen={() => setScreen({ kind: 'book', id: b.id })} />)}
+                            </div>
+                          ) : (
+                            <p className="bk-shelf-empty" lang="fr">{fr ? 'Ta bibliothèque est vide. Dans un livre, touche « ♡ Garder » pour le ranger ici.' : 'Your library is empty. In a book, tap “♡ Keep” to put it here.'}</p>
+                          )}
+                        </section>
+                      </div>
+                    );
+                  })()}
+                  <h2 className="kid-h2" lang="fr">🗺️ Mes mondes</h2>
                   <section aria-label={fr ? 'Mondes' : 'Worlds'} className="kid-worlds">
                     {progress.units.map((u) => (
                       <motion.button key={u.unit.id} type="button" className="kid-world" style={{ background: u.unit.colour }} disabled={!u.unlocked} whileHover={u.unlocked ? { y: -4 } : undefined} whileTap={u.unlocked ? { scale: 0.97 } : undefined} onClick={() => setScreen({ kind: 'world', unit: u.unit })}>
@@ -359,6 +461,14 @@ export function KidModePage() {
                   {screen.game === 'speak' && <SpeakGame unit={screen.unit} onFinish={finish(screen.unit, 'speak')} onExit={() => setScreen({ kind: 'world', unit: screen.unit })} />}
                 </section>
               )}
+
+              {screen.kind === 'book' && (() => {
+                const book = BOOKS.find((b) => b.id === screen.id)!;
+                const unit = KID_UNITS.find((u) => u.id === (book.world ?? BOOK_WORLD[book.id])) ?? KID_UNITS[0];
+                const saved = (kid.library ?? []).includes(book.id);
+                const toggleSave = () => void actions.kids.update(kid.id, { library: saved ? (kid.library ?? []).filter((x) => x !== book.id) : [...(kid.library ?? []), book.id] }).then(() => toast(saved ? (fr ? 'Retiré de ta bibliothèque' : 'Removed from your library') : fr ? 'Rangé dans ta bibliothèque ♡' : 'Kept in your library ♡')).catch((e) => toast(errText(e)));
+                return <section className="kid-card-big"><BookReader book={book} childName={kid.name} saved={saved} onToggleSave={toggleSave} onFinish={(s, t) => { markBookRead(book.id); finish(unit, 'story')(s, t); }} onExit={() => setScreen({ kind: 'home' })} /></section>;
+              })()}
 
               {screen.kind === 'live' && (
                 <LiveScreen code={screen.code} playerId={screen.playerId} practice={screen.practice}

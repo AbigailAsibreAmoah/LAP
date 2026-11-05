@@ -4,6 +4,7 @@ import { ContentError, pointsFor, registerTokenGranter, seedContentBase, type Co
 import { SEED_SHIFT_DAYS, shiftDatesInPlace, shiftIso, weekendNudge, weeklySchedule } from './clock';
 import { LEARNERS, TUTORS } from './demo-data';
 import { seedKids } from './kids';
+import { seedCafe } from './cafe';
 import type { ReviewDay, VocabReview } from './review';
 import type { Booking, CefrLevel, Localized } from './types';
 
@@ -394,6 +395,7 @@ export function seedContent(): ContentState {
     reports: [],
     ...seedKids(),
     ...seedReviews(),
+    cafe: seedCafe(),
     follows: shiftDatesInPlace([
       { followerId: 'lrn-ama', followeeId: 'lrn-adwoa', at: SEED_AT },
       { followerId: 'lrn-adwoa', followeeId: 'lrn-ama', at: SEED_AT },

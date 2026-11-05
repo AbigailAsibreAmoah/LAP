@@ -10,3 +10,4 @@ export * from './review';
 export * from './speechScore';
 export * from './kidStories';
 export * from './accounts';
+export * from './cafe';

@@ -37,6 +37,7 @@ const NAV: Record<Role, NavGroup[]> = {
     ] },
     { key: 'app.communityGroup', items: [
       { to: '/app/community', key: 'app.community', icon: 'star' },
+      { to: '/app/cafe', key: 'app.cafe', icon: 'message' },
       { to: '/app/kids', key: 'app.kids', icon: 'award' },
     ] },
     { key: 'app.account', items: [
@@ -58,6 +59,7 @@ const NAV: Record<Role, NavGroup[]> = {
       { to: '/instructor/immersion', key: 'app.immersion', icon: 'mic' },
       { to: '/instructor/groups', key: 'app.groups', icon: 'users' },
       { to: '/instructor/games', key: 'app.kidsGames', icon: 'quiz' },
+      { to: '/instructor/cafe', key: 'app.cafe', icon: 'message' },
     ] },
   ],
   admin: [
@@ -72,6 +74,7 @@ const NAV: Record<Role, NavGroup[]> = {
       { to: '/admin/immersion', key: 'app.immersion', icon: 'mic' },
       { to: '/admin/groups', key: 'app.groups', icon: 'users' },
       { to: '/admin/games', key: 'app.kidsGames', icon: 'quiz' },
+      { to: '/admin/cafe', key: 'app.cafe', icon: 'message' },
       { to: '/admin/support', key: 'app.support', icon: 'support' },
       { to: '/admin/reports', key: 'app.reports', icon: 'file' },
     ] },
