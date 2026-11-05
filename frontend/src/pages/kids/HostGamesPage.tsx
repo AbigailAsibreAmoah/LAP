@@ -78,6 +78,7 @@ function LiveHost() {
           <span className="label">{fr ? 'Code du jeu' : 'Game code'}</span>
           <div className="host-code" aria-label={view.code.split('').join(' ')}>{view.code.slice(0, 3)} {view.code.slice(3)}</div>
           <p className="small">{fr ? 'Les enfants ouvrent La Porte Kids → « Jeu en direct » et tapent ce code.' : 'Children open La Porte Kids → “Live game” and type this code.'}</p>
+          <span className="chip">{fr ? 'Code de démo : le même pour chaque partie' : 'Demo code: the same for every game'}</span>
           <div className="host-players">
             {view.players.map((p) => <motion.span key={p.id} className="chip" initial={{ scale: 0 }} animate={{ scale: 1 }} transition={spring.bouncy} lang="fr">{p.nickname}</motion.span>)}
             {!view.players.length && <span className="tiny muted">{fr ? 'En attente des joueurs…' : 'Waiting for players…'}</span>}

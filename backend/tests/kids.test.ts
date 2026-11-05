@@ -68,7 +68,7 @@ describe('live class games', () => {
     expect((await request(app).post('/api/games').send({ unitId: 'ku-couleurs' })).status).toBe(403);
     const created = await tutor(request(app).post('/api/games').send({ unitId: 'ku-couleurs' }));
     const code = created.body.code as string;
-    expect(code).toMatch(/^\d{6}$/);
+    expect(code).toBe('123456'); // demo: one fixed code
 
     // Someone else's child cannot be joined; a parent who switched live games off is refused.
     expect((await request(app).post(`/api/games/${code}/join`).set('x-demo-user', 'lrn-kofi').send({ kidId: 'kid-kwame' })).status).toBe(403);

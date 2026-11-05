@@ -136,3 +136,6 @@
   .kg-pulse, .kg-slots[data-state='wrong'] { animation: none; }
   .kg-card-inner { transition: none; }
 }
+
+.kid-demo-code { padding: 10px 12px; border: 1px dashed #c49a5a; border-radius: 12px; background: #fffaf2; color: #6e1630; font-size: 14px; cursor: pointer; }
+.kid-demo-code strong { letter-spacing: 0.12em; }

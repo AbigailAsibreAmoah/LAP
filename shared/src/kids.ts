@@ -322,6 +322,12 @@ export function seedKids(): Pick<ContentState, 'kids' | 'kidActivities' | 'exter
 
 export const LIVE_QUESTION_SEC = 20;
 
+/**
+ * Demo: every tutor-hosted game uses this code, and a child who types it when no tutor is hosting
+ * gets a self-running game with simulated classmates. A live portal issues a fresh code per game.
+ */
+export const DEMO_GAME_CODE = '123456';
+
 export interface LivePlayer {
   id: string;
   nickname: string;

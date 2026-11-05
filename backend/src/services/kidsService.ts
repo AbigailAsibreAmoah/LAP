@@ -1,4 +1,4 @@
-import { ContentError, kidOps, liveOps, visibleContent, type ContentState, type ContentUser, type KidActivity, type KidProfile, type KidSettings, type LiveGame } from '@laporte/shared';
+import { ContentError, DEMO_GAME_CODE, kidOps, liveOps, visibleContent, type ContentState, type ContentUser, type KidActivity, type KidProfile, type KidSettings, type LiveGame } from '@laporte/shared';
 import { contentStore } from '../repositories/contentStore';
 import { nextId } from '../utils/ids';
 
@@ -28,13 +28,6 @@ export const kidsService = {
 const games = new Map<string, LiveGame>();
 const GAME_TTL_MS = 3 * 60 * 60 * 1000;
 
-function newCode() {
-  for (;;) {
-    const code = String(Math.floor(100000 + Math.random() * 900000));
-    if (!games.has(code)) return code;
-  }
-}
-
 function find(code: string) {
   const game = games.get(code);
   if (!game || Date.now() - Date.parse(game.createdAt) > GAME_TTL_MS) throw new ContentError(404, 'not_found', 'No game with this code. Check the code with your tutor.');
@@ -45,7 +38,9 @@ export const liveGameService = {
   create(user: ContentUser, unitId: string) {
     if (user.role === 'learner') throw new ContentError(403, 'forbidden', 'Only tutors host live games.');
     for (const [code, g] of games) if (Date.now() - Date.parse(g.createdAt) > GAME_TTL_MS) games.delete(code);
-    const game = liveOps.create(user.id, unitId, new Date().toISOString(), newCode());
+    // Demo: every game uses the fixed demo code, so a new game replaces the previous one.
+    // A live portal would issue a fresh random code per game.
+    const game = liveOps.create(user.id, unitId, new Date().toISOString(), DEMO_GAME_CODE);
     games.set(game.code, game);
     return liveOps.viewFor(game, { hostId: user.id });
   },

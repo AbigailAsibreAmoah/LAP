@@ -109,7 +109,8 @@ The frontend never imports backend code, and the backend holds all integration b
 | Groups | **Functional**: cohorts of 5 learners maximum with one instructor, scheduled Google Meet sessions, attendance, and group assignments (the instructor sees every answer; learners see their own) |
 | Community | **Functional**: follow classmates, message classmates you follow or share a group with (contact-detail filter applies), leaderboard from the reward ledger with an opt-out |
 | Rewards | **Functional**: weekly quests earn points; Silver/Gold/Platinum unlock a renewal discount or a free session credit, applied at checkout or redeemed. Demo classmates have a seeded points history |
-| Phrase of the day, kids profile | Phrase of the day on the dashboard. The kids profile is an entry point only (Phase 3) |
+| Phrase of the day | Phrase of the day on the dashboard |
+| La Porte Kids | **Functional**: parent-managed child profiles (up to 5), daily time limit, per-game switches, PIN to leave child mode. Six learning worlds (A1) with four original mini-games (*Le Grand Quiz*, Memory, Word builder, Listen & pick), stars, badges and unlocking. Tutor-hosted **live class quizzes** (6-digit code, safe nicknames, speed points, podium; in-memory on the API, simulated players offline). Outside games (Kahoot!, Quizlet, Wordwall, Blooket) are **links** a tutor attaches, shown only if a parent allows them and opened with the PIN. Not built: real-time sockets, PIN hashing, children's live lessons |
 | Chat safety | **Enforced** on client and server: messages with phone numbers, emails, handles or outside links are refused |
 | Typed-only answers | **Enforced in the browser** (paste and drop blocked). It discourages pasting; it cannot prove who typed |
 | Authentication | **Simulated**: forms just enter the demo; role selection trusts an `x-demo-user` header |

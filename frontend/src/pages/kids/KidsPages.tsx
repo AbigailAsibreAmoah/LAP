@@ -1,4 +1,4 @@
-import { DAILY_LIMITS, EXTERNAL_PROVIDERS, KID_GAME_INFO, KID_GAMES, KID_UNITS, kidProgress, minutesToday, nowIso, type CefrLevel, type KidGame, type KidProfile, type KidUnit, type LiveGameView, type PortraitSpec } from '@laporte/shared';
+import { DAILY_LIMITS, DEMO_GAME_CODE, EXTERNAL_PROVIDERS, KID_GAME_INFO, KID_GAMES, KID_UNITS, kidProgress, minutesToday, nowIso, type CefrLevel, type KidGame, type KidProfile, type KidUnit, type LiveGameView, type PortraitSpec } from '@laporte/shared';
 import { AnimatePresence, motion } from 'motion/react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
@@ -8,7 +8,7 @@ import { Icon } from '../../components/ui/Icon';
 import { Modal } from '../../components/ui/Overlay';
 import { useToast } from '../../components/ui/Toasts';
 import { BuilderGame, ListenGame, LivePlayerView, MemoryGame, QuizGame, Stars } from '../../features/kids/KidGames';
-import { liveClient } from '../../features/kids/liveClient';
+import { isLocalGame, liveClient } from '../../features/kids/liveClient';
 import { useI18n } from '../../i18n/I18nProvider';
 import { useStore } from '../../state/AppStore';
 import { formatDate } from '../../utils/format';
@@ -445,6 +445,9 @@ function JoinLive({ open, kid, onClose, onJoined }: { open: boolean; kid: KidPro
         <p className="small">{fr ? 'Tape le code que ton tuteur montre à l’écran.' : 'Type the code your tutor shows on screen.'}</p>
         <input className="input kid-code-input" inputMode="numeric" autoFocus value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))} placeholder="000000" aria-label={fr ? 'Code du jeu' : 'Game code'} />
         {error && <p className="field-error" role="alert">{error}</p>}
+        <button type="button" className="kid-demo-code" onClick={() => { setCode(DEMO_GAME_CODE); setError(null); }}>
+          {fr ? 'Démo : utilise le code' : 'Demo: use code'} <strong>{DEMO_GAME_CODE.slice(0, 3)} {DEMO_GAME_CODE.slice(3)}</strong>
+        </button>
         <p className="tiny muted">{fr ? `Tu joueras sous le nom « ${kid.nickname} ».` : `You’ll play as “${kid.nickname}”.`}</p>
         <button className="btn btn-brand" disabled={code.length !== 6 || busy}>{fr ? 'Entrer' : 'Join'}</button>
       </form>
@@ -467,7 +470,7 @@ function LiveScreen({ code, playerId, practice, onEnd }: { code: string; playerI
   const correct = view.me ? Object.values(view.me.answers).filter((a) => a.correct).length : 0;
   return (
     <section className="kid-card-big">
-      {practice && <span className="chip" style={{ marginBottom: 10 }}>{lang === 'fr' ? 'Entraînement · joueurs simulés' : 'Practice · simulated players'}</span>}
+      {(practice || isLocalGame(code)) && <span className="chip" style={{ marginBottom: 10 }}>{lang === 'fr' ? 'Entraînement · joueurs simulés' : 'Practice · simulated players'}</span>}
       <LivePlayerView view={view} onLeave={() => onEnd(correct, view.count)}
         onAnswer={(choice) => void liveClient.answer(user, code, playerId, view.index, choice).then(setView).catch((e) => toast(errText(e)))} />
     </section>

@@ -1,4 +1,4 @@
-import { ContentError, liveOps, type ContentUser, type LiveGame, type LiveGameView } from '@laporte/shared';
+import { ContentError, DEMO_GAME_CODE, liveOps, type ContentUser, type LiveGame, type LiveGameView } from '@laporte/shared';
 import { ApiError, detectApi, request } from '../../services/http';
 
 /*
@@ -59,8 +59,7 @@ function localGame(code: string) {
   return g;
 }
 
-function newLocal(hostId: string, unitId: string, practice = false) {
-  const code = String(100000 + Math.floor(Math.random() * 900000));
+function newLocal(hostId: string, unitId: string, practice = false, code = String(100000 + Math.floor(Math.random() * 900000))) {
   const game = Object.assign(liveOps.create(hostId, unitId, now(), code), { practice });
   for (let i = 0; i < BOTS; i++) liveOps.join(game, { bot: true }, () => id('bot'));
   local.set(code, game);
@@ -72,13 +71,13 @@ export const isLocalGame = (code: string) => local.has(code);
 export const liveClient = {
   async create(user: ContentUser, unitId: string): Promise<LiveGameView> {
     if (await detectApi()) return request<LiveGameView>('/games', { method: 'POST', body: { unitId }, userId: user.id });
-    return wrap(() => liveOps.viewFor(newLocal(user.id, unitId), { hostId: user.id }));
+    return wrap(() => liveOps.viewFor(newLocal(user.id, unitId, false, DEMO_GAME_CODE), { hostId: user.id }));
   },
 
   /** A practice round for a child: always local, with simulated classmates, runs on its own. */
-  practice(user: ContentUser, unitId: string, kidId: string, nickname: string) {
+  practice(user: ContentUser, unitId: string, kidId: string, nickname: string, code?: string) {
     return wrap(() => {
-      const game = newLocal(`practice-${user.id}`, unitId, true);
+      const game = newLocal(`practice-${user.id}`, unitId, true, code);
       const me = liveOps.join(game, { kidId, nickname }, () => id('pl'));
       liveOps.advance(game, game.hostId, now());
       return { view: liveOps.viewFor(game, { playerId: me.id }), playerId: me.id };
@@ -86,10 +85,19 @@ export const liveClient = {
   },
 
   async join(user: ContentUser, code: string, kidId: string, nickname: string) {
+    // Each new try of the demo code starts a fresh round (a tutor-hosted demo game is kept while it runs).
+    const previous = code === DEMO_GAME_CODE ? local.get(code) : undefined;
+    if (previous && (previous.practice || previous.phase === 'podium')) local.delete(code);
     if (!local.has(code) && (await detectApi())) {
-      const view = await request<LiveGameView>(`/games/${code}/join`, { method: 'POST', body: { kidId }, userId: user.id });
-      return { view, playerId: view.me!.id };
+      try {
+        const view = await request<LiveGameView>(`/games/${code}/join`, { method: 'POST', body: { kidId }, userId: user.id });
+        return { view, playerId: view.me!.id };
+      } catch (e) {
+        // No tutor is hosting the demo code: start a self-running demo game instead.
+        if (!(code === DEMO_GAME_CODE && e instanceof ApiError && (e.status === 404 || e.status === 409))) throw e;
+      }
     }
+    if (code === DEMO_GAME_CODE && !local.has(code)) return liveClient.practice(user, 'ku-couleurs', kidId, nickname, DEMO_GAME_CODE);
     return wrap(() => {
       const game = localGame(code);
       const me = liveOps.join(game, { kidId, nickname }, () => id('pl'));
