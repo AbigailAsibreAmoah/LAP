@@ -34,23 +34,30 @@ export function BookObject({ book, recommended, read, onOpen }: { book: Book; re
 
 /* ======================= Reading: an open book with real page turns ======================= */
 
-
+/*
+ * Laid out like a printed picture book: every page has its text at the top and its painting
+ * underneath, fading into the paper. Wide screens show two pages side by side (a spread) and turn
+ * a real leaf; narrow screens show one page at a time.
+ * Views: -1 = endpaper + title page, 0… = story spreads (or pages), last = the end.
+ */
 export function BookReader({ book, childName, saved, onToggleSave, onFinish, onExit }: { book: Book; childName: string; saved?: boolean; onToggleSave?: () => void; onFinish: (score: number, total: number) => void; onExit: () => void }) {
   const { lang } = useI18n();
   const fr = lang === 'fr';
   const reduce = useReducedMotion();
-  const last = book.pages.length; // index of the end spread; -1 is the title spread
+  const n = book.pages.length;
+  const [single, setSingle] = useState(false);
+  const spreads = Math.ceil(n / 2);
+  const last = single ? n : spreads;
   const [at, setAt] = useState(-1);
   const [flip, setFlip] = useState<null | { from: number; to: number }>(null);
-  const [word, setWord] = useState(-1);
-  const [reading, setReading] = useState(false);
+  const [voice, setVoice] = useState<{ page: number; word: number } | null>(null);
   const [auto, setAuto] = useState(false);
   const [showEn, setShowEn] = useState(false);
-  const [single, setSingle] = useState(false);
   const stop = useRef<() => void>(() => undefined);
   const autoRef = useRef(false);
   autoRef.current = auto;
   const wrap = useRef<HTMLDivElement>(null);
+  const prevSingle = useRef(single);
 
   // One page at a time on narrow screens.
   useEffect(() => {
@@ -60,40 +67,49 @@ export function BookReader({ book, childName, saved, onToggleSave, onFinish, onE
     ro.observe(el);
     return () => ro.disconnect();
   }, []);
+  // Keep the reader on the same page when the layout switches between spreads and single pages.
+  useEffect(() => {
+    if (prevSingle.current === single) return;
+    prevSingle.current = single;
+    setAt((a) => (a < 0 ? a : single ? (a >= spreads ? n : a * 2) : a >= n ? spreads : Math.floor(a / 2)));
+  }, [single, spreads, n]);
+
+  const pagesOf = useCallback((v: number) => (v < 0 || v >= last ? [] : single ? [v] : [2 * v, 2 * v + 1].filter((p) => p < n)), [last, single, n]);
+
+  const hush = useCallback(() => {
+    stop.current();
+    stop.current = () => undefined;
+    setVoice(null);
+  }, []);
 
   const turn = useCallback((to: number) => {
     if (flip || to < -1 || to > last || to === at) return;
-    stop.current();
-    setReading(false);
-    setWord(-1);
+    hush();
     if (reduce || single) setAt(to);
     else setFlip({ from: at, to });
-  }, [flip, last, at, reduce, single]);
+  }, [flip, last, at, reduce, single, hush]);
 
-  const read = useCallback((i: number) => {
-    const text = book.pages[i]?.fr;
-    if (!text) return;
+  /** Read the pages aloud one after the other, highlighting each word. */
+  const readPages = useCallback((ps: number[], done?: () => void) => {
     stop.current();
-    setReading(true);
-    stop.current = readAloud(text, setWord, () => {
-      setReading(false);
-      setWord(-1);
-    });
+    const step = (k: number) => {
+      if (k >= ps.length) {
+        setVoice(null);
+        done?.();
+        return;
+      }
+      setVoice({ page: ps[k], word: -1 });
+      stop.current = readAloud(book.pages[ps[k]].fr, (w) => setVoice({ page: ps[k], word: w }), () => step(k + 1));
+    };
+    step(0);
   }, [book]);
 
-  // Read each new page in "read it to me" mode, then turn the page by itself.
+  // "Read it to me": read what is open, then turn the page by itself.
   useEffect(() => {
     if (!auto || flip || at < 0 || at >= last) return;
-    const text = book.pages[at].fr;
-    stop.current();
-    setReading(true);
-    stop.current = readAloud(text, setWord, () => {
-      setReading(false);
-      setWord(-1);
-      window.setTimeout(() => autoRef.current && turn(at + 1), 1100);
-    });
+    readPages(pagesOf(at), () => window.setTimeout(() => autoRef.current && turn(at + 1), 1100));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [auto, at, flip]);
+  }, [auto, at, flip, last]);
   useEffect(() => () => stop.current(), []);
 
   useEffect(() => {
@@ -105,59 +121,37 @@ export function BookReader({ book, childName, saved, onToggleSave, onFinish, onE
     return () => window.removeEventListener('keydown', onKey);
   }, [turn, at]);
 
-  /* ---- what each half of a spread shows ---- */
-  const leftOf = (i: number): ReactNode => {
-    if (i === -1) return <Endpaper childName={childName} />;
-    if (i >= last) return <EndArt book={book} />;
-    return <SpreadArt book={book} i={i} side="left" />;
+  const story = (p: number, live: boolean) => <StoryPage key={p} book={book} p={p} live={live} word={voice?.page === p ? voice.word : -1} showEn={showEn} />;
+
+  /* ---- what each page of a spread shows ---- */
+  const leftOf = (v: number, live = true): ReactNode => {
+    if (v === -1) return <Endpaper childName={childName} />;
+    if (v >= last) return <EndArt book={book} live={live} />;
+    return story(2 * v, live);
   };
-  const rightOf = (i: number): ReactNode => {
-    if (i === -1) return <TitlePage book={book} />;
-    if (i >= last) return <EndPage book={book} onFinish={onFinish} onAgain={() => setAt(-1)} onExit={onExit} />;
-    return (
-      <>
-        <SpreadArt book={book} i={i} side="right" />
-        {textPanel(i)}
-      </>
-    );
-  };
-  // The text sits on a cream panel over the quiet part of the picture, as in a printed picture book.
-  const textPanel = (i: number) => {
-    const p = book.pages[i];
-    return (
-      <div className="bk-textpanel" style={{ ['--fs' as string]: p.fr.length > 220 ? 0.6 : p.fr.length > 150 ? 0.68 : p.fr.length > 90 ? 0.8 : 1 }}>
-        <p className="bk-fr" lang="fr">{frenchWords(p.fr).map(({ w, gap }, k) => <span key={k} className="bk-word" data-on={(i === at && k === word) || undefined}>{w}{gap}</span>)}</p>
-        {showEn && <p className="bk-en">{p.en}</p>}
-        <span className="bk-folio">{i + 1}</span>
-      </div>
-    );
+  const rightOf = (v: number, live = true): ReactNode => {
+    if (v === -1) return <TitlePage book={book} live={live} />;
+    if (v >= last) return <EndPage book={book} onFinish={onFinish} onAgain={() => setAt(-1)} onExit={onExit} />;
+    return 2 * v + 1 < n ? story(2 * v + 1, live) : <SpotPage book={book} live={live} />;
   };
 
   const base: { left: number; right: number } = flip ? (flip.to > flip.from ? { left: flip.from, right: flip.to } : { left: flip.to, right: flip.from }) : { left: at, right: at };
   const forward = flip ? flip.to > flip.from : true;
   const progress = Math.max(0, Math.min(1, (at + 1) / (last + 1)));
+  const reading = voice !== null;
 
   return (
     <div className="bk-reader" ref={wrap}>
       <div className="bk-toolbar">
-        <button className="btn btn-ghost btn-sm" onClick={() => { stop.current(); onExit(); }}>← {fr ? 'La bibliothèque' : 'The bookshelf'}</button>
+        <button className="btn btn-ghost btn-sm" onClick={() => { hush(); onExit(); }}>← {fr ? 'La bibliothèque' : 'The bookshelf'}</button>
         <span className="bk-progress" aria-hidden><span style={{ width: `${progress * 100}%` }} /></span>
         {onToggleSave && <button className={`btn btn-sm ${saved ? 'btn-brand' : 'btn-ghost'}`} aria-pressed={!!saved} onClick={onToggleSave}>{saved ? '♥' : '♡'} {saved ? (fr ? 'Dans ma bibliothèque' : 'In my library') : fr ? 'Garder' : 'Keep'}</button>}
         <button className="btn btn-ghost btn-sm" aria-pressed={showEn} onClick={() => setShowEn((s) => !s)}>{showEn ? (fr ? 'Cacher l’anglais' : 'Hide English') : 'English'}</button>
       </div>
 
       {single ? (
-        <motion.div key={at} className="bk-single" initial={{ opacity: 0, x: 24 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.35 }}>
-          <div className="bk-paper bk-paper-single">
-            {at >= 0 && at < last ? (
-              <>
-                <Scene kind={book.pages[at].scene} time={book.pages[at].time} props={book.pages[at].props} cast={book.pages[at].cast} />
-                {textPanel(at)}
-              </>
-            ) : (
-              rightOf(at)
-            )}
-          </div>
+        <motion.div key={at} className="bk-single" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.3 }}>
+          <div className="bk-paper bk-paper-single">{at === -1 ? <TitlePage book={book} live /> : at >= last ? rightOf(spreads) : story(at, true)}</div>
         </motion.div>
       ) : (
         <div className="bk-desk">
@@ -173,8 +167,8 @@ export function BookReader({ book, childName, saved, onToggleSave, onFinish, onE
                 transition={{ duration: 0.85, ease: [0.45, 0.05, 0.25, 1] }}
                 onAnimationComplete={() => { setAt(flip.to); setFlip(null); }}
               >
-                <div className="bk-leaf-face bk-leaf-front"><div className="bk-paper">{forward ? rightOf(flip.from) : leftOf(flip.from)}</div><span className="bk-leaf-shade" /></div>
-                <div className="bk-leaf-face bk-leaf-back"><div className="bk-paper">{forward ? leftOf(flip.to) : rightOf(flip.to)}</div><span className="bk-leaf-shade" /></div>
+                <div className="bk-leaf-face bk-leaf-front"><div className="bk-paper">{forward ? rightOf(flip.from, false) : leftOf(flip.from, false)}</div><span className="bk-leaf-shade" /></div>
+                <div className="bk-leaf-face bk-leaf-back"><div className="bk-paper">{forward ? leftOf(flip.to, false) : rightOf(flip.to, false)}</div><span className="bk-leaf-shade" /></div>
               </motion.div>
             )}
             <span className="bk-stack bk-stack-l" aria-hidden style={{ ['--n' as string]: Math.max(1, at + 2) }} />
@@ -187,8 +181,8 @@ export function BookReader({ book, childName, saved, onToggleSave, onFinish, onE
         <button className="bk-turn" disabled={at <= -1 || !!flip} onClick={() => turn(at - 1)} aria-label={fr ? 'Page précédente' : 'Previous page'}>‹</button>
         {at >= 0 && at < last ? (
           <>
-            <button className="btn btn-secondary" onClick={() => (reading ? (stop.current(), setReading(false), setWord(-1)) : read(at))}>{reading ? '⏸' : '🔊'} {fr ? 'Écouter' : 'Listen'}</button>
-            <button className={`btn ${auto ? 'btn-brand' : 'btn-ghost'}`} aria-pressed={auto} onClick={() => { setAuto((a) => !a); if (auto) stop.current(); }}>{fr ? 'Lis-moi l’histoire' : 'Read it to me'}</button>
+            <button className="btn btn-secondary" onClick={() => (reading ? hush() : readPages(pagesOf(at)))}>{reading ? '⏸' : '🔊'} {fr ? 'Écouter' : 'Listen'}</button>
+            <button className={`btn ${auto ? 'btn-brand' : 'btn-ghost'}`} aria-pressed={auto} onClick={() => { setAuto((a) => !a); if (auto) hush(); }}>{fr ? 'Lis-moi l’histoire' : 'Read it to me'}</button>
           </>
         ) : at === -1 ? (
           <button className="btn btn-brand" onClick={() => turn(0)}>{fr ? 'Commencer l’histoire' : 'Start the story'} →</button>
@@ -212,12 +206,31 @@ function frenchWords(text: string) {
   });
 }
 
-/** One half of a full-spread illustration: the picture runs across both pages, like a printed picture book. */
-function SpreadArt({ book, i, side }: { book: Book; i: number; side: 'left' | 'right' }) {
-  const p = book.pages[i];
+/** One page of the story: the words at the top, the painting underneath. */
+function StoryPage({ book, p, live, word, showEn }: { book: Book; p: number; live: boolean; word: number; showEn: boolean }) {
+  const page = book.pages[p];
+  const len = page.fr.length;
+  const fs = len > 240 ? 0.9 : len > 150 ? 1 : len > 80 ? 1.12 : 1.34;
   return (
-    <div className={`bk-spread-art bk-spread-${side}`}>
-      <Scene kind={p.scene} time={p.time} props={p.props} cast={p.cast} />
+    <div className="bk-story">
+      <div className="bk-story-text" style={{ ['--fs' as string]: fs }}>
+        <p className="bk-fr" lang="fr">{frenchWords(page.fr).map(({ w, gap }, k) => <span key={k} className="bk-word" data-on={k === word || undefined}>{w}{gap}</span>)}</p>
+        {showEn && <p className="bk-en">{page.en}</p>}
+      </div>
+      <div className="bk-story-art">
+        <Scene kind={page.scene} time={page.time} props={page.props} cast={page.cast} variant="page" live={live} />
+      </div>
+      <span className="bk-folio">{p + 1}</span>
+    </div>
+  );
+}
+
+/** When a story has an odd number of pages, the last right-hand page carries a small spot painting. */
+function SpotPage({ book, live }: { book: Book; live: boolean }) {
+  return (
+    <div className="bk-spotpage">
+      <div className="bk-spot"><Scene kind={book.cover.scene} time={book.cover.time} props={book.cover.props} cast={book.cover.cast} variant="page" live={live} /></div>
+      <span className="bk-ornament" aria-hidden>❦</span>
     </div>
   );
 }
@@ -238,7 +251,7 @@ function Endpaper({ childName }: { childName: string }) {
   );
 }
 
-function TitlePage({ book }: { book: Book }) {
+function TitlePage({ book, live = false }: { book: Book; live?: boolean }) {
   const { lang } = useI18n();
   const fr = lang === 'fr';
   return (
@@ -246,16 +259,22 @@ function TitlePage({ book }: { book: Book }) {
       <span className="bk-kicker">La Porte Kids · {book.level}</span>
       <h2 className="bk-h" lang="fr">{book.title}</h2>
       {!fr && <span className="bk-sub">{book.titleEn}</span>}
-      <div className="bk-vignette"><Scene kind={book.cover.scene} time={book.cover.time} props={book.cover.props} cast={book.cover.cast} /></div>
+      <div className="bk-vignette"><Scene kind={book.cover.scene} time={book.cover.time} props={book.cover.props} cast={book.cover.cast} variant="page" live={live} /></div>
       <p className="bk-blurb">{fr ? book.blurb.fr : book.blurb.en}</p>
       <span className="bk-age">{fr ? `Pour les ${book.ages} ans` : `For ages ${book.ages}`}</span>
     </div>
   );
 }
 
-const EndArt = ({ book }: { book: Book }) => {
+/** The left-hand page at the end: the last picture again, at dusk, with a quiet word. */
+const EndArt = ({ book, live = false }: { book: Book; live?: boolean }) => {
   const p = book.pages[book.pages.length - 1];
-  return <Scene kind={p.scene} time={p.time === 'day' ? 'dusk' : p.time} props={p.props} cast={p.cast} className="bk-illus" />;
+  return (
+    <div className="bk-spotpage">
+      <div className="bk-spot bk-spot-wide"><Scene kind={p.scene} time={p.time === 'day' ? 'dusk' : p.time} props={p.props} cast={p.cast} variant="page" live={live} /></div>
+      <span className="bk-ornament" aria-hidden>❦</span>
+    </div>
+  );
 };
 
 function EndPage({ book, onFinish, onAgain, onExit }: { book: Book; onFinish: (score: number, total: number) => void; onAgain: () => void; onExit: () => void }) {

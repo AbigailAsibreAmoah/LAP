@@ -129,7 +129,8 @@ export function Scene({ kind, time, props, cast, className, variant = 'cover', l
   const people = (
     <g className="sc-noink">
       {cast.map((c, i) => {
-        const s = (c.size / 22) * (indoor ? 1.12 : 1) * (isAdult(c.who) ? 1.04 : 1);
+        const adult = isAdult(c.who);
+        const s = (c.size / 22) * (adult ? 1.3 : 1.5 * (indoor ? 1.1 : 1));
         const x = (c.x / 100) * W;
         const y = FEET[kind] * H;
         return (
@@ -143,7 +144,7 @@ export function Scene({ kind, time, props, cast, className, variant = 'cover', l
 
   return (
     <div className={`sc sc-${variant}${boil ? ' sc-live' : ''} ${className ?? ''}`}>
-      <svg className="sc-layer" viewBox={`0 0 ${W} ${H}`} aria-hidden>
+      <svg className="sc-layer" viewBox={`0 0 ${W} ${H}`} preserveAspectRatio={page ? 'xMidYMax slice' : undefined} aria-hidden>
         <defs>
           <linearGradient id={`sky${uid}`} x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor={s1} /><stop offset="0.55" stopColor={s2} /><stop offset="1" stopColor={s3} /></linearGradient>
           <radialGradient id={`sun${uid}`}><stop offset="0" stopColor="#FFF6D8" /><stop offset="0.45" stopColor={time === 'dusk' ? '#FFB36B' : '#FFE08A'} /><stop offset="1" stopColor={time === 'dusk' ? '#FF8A5C' : '#FFD36B'} stopOpacity="0" /></radialGradient>
@@ -155,29 +156,17 @@ export function Scene({ kind, time, props, cast, className, variant = 'cover', l
             <feTurbulence type="fractalNoise" baseFrequency="0.028" numOctaves="2" seed="3" result="warp">
               {boil && <animate attributeName="seed" values="3;8;13" dur="0.9s" calcMode="discrete" repeatCount="indefinite" />}
             </feTurbulence>
-            <feDisplacementMap in="SourceGraphic" in2="warp" scale="5" xChannelSelector="R" yChannelSelector="G" result="drawn" />
+            <feDisplacementMap in="SourceGraphic" in2="warp" scale="4" xChannelSelector="R" yChannelSelector="G" result="drawn" />
             <feTurbulence type="fractalNoise" baseFrequency="0.012" numOctaves="3" seed="21" result="blot" />
-            <feColorMatrix in="blot" type="matrix" values="0.35 0 0 0 0.72  0.35 0 0 0 0.72  0.35 0 0 0 0.72  0 0 0 0 1" result="wash" />
+            <feColorMatrix in="blot" type="matrix" values="0.16 0 0 0 0.86  0.16 0 0 0 0.86  0.16 0 0 0 0.86  0 0 0 0 1" result="wash" />
             <feTurbulence type="fractalNoise" baseFrequency="0.75" numOctaves="2" seed="5" result="tooth" />
-            <feColorMatrix in="tooth" type="matrix" values="0.22 0 0 0 0.84  0.22 0 0 0 0.84  0.22 0 0 0 0.84  0 0 0 0 1" result="grain" />
+            <feColorMatrix in="tooth" type="matrix" values="0.12 0 0 0 0.91  0.12 0 0 0 0.91  0.12 0 0 0 0.91  0 0 0 0 1" result="grain" />
             <feBlend in="drawn" in2="wash" mode="multiply" result="p1" />
             <feBlend in="p1" in2="grain" mode="multiply" result="p2" />
             <feComposite in="p2" in2="drawn" operator="in" />
           </filter>
-          {page && (
-            <>
-              <filter id={`rag${uid}`} x="-10%" y="-10%" width="120%" height="120%">
-                <feTurbulence type="fractalNoise" baseFrequency="0.035" numOctaves="4" seed="9" result="n" />
-                <feDisplacementMap in="SourceGraphic" in2="n" scale="46" xChannelSelector="R" yChannelSelector="G" result="r" />
-                <feGaussianBlur in="r" stdDeviation="1.4" />
-              </filter>
-              <mask id={`edge${uid}`} maskUnits="userSpaceOnUse" x="0" y="0" width={W} height={H}>
-                <g filter={`url(#rag${uid})`}><path d={`M44 70 Q 46 26 110 26 L 690 30 Q 758 32 760 92 L 768 470 Q 766 496 726 496 L 72 494 Q 32 492 34 452 Z`} fill="#fff" /></g>
-              </mask>
-            </>
-          )}
         </defs>
-        <g mask={page ? `url(#edge${uid})` : undefined}>
+        <g>
           <g className="sc-ink" filter={`url(#paint${uid})`}>
             {back}
             {people}

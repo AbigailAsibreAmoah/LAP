@@ -177,3 +177,56 @@
 .bk-shelf-empty { position: relative; z-index: 1; margin: 22px auto; max-width: 34ch; padding: 18px; border: 2px dashed rgba(110, 22, 48, 0.25); border-radius: 18px; text-align: center; color: #6b4a2e; font-family: Fraunces, Georgia, serif; }
 .kid-lib-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 6px; margin-top: 6px; }
 
+
+/* ======================= Hand-illustrated look (2026-11 redesign) ======================= */
+
+/* Ink: every filled shape in a painting gets a soft brown outline (things drawn with their own line keep it). */
+.sc-ink :is(path, rect, ellipse, circle, polygon):not([stroke]):not([fill^='url']):not([fill^='rgba']):not(.sc-noink):not(.sc-noink *):not(.sc-twinkle) {
+  stroke: #3a2618; stroke-width: 2.2; stroke-linejoin: round; stroke-opacity: 0.85;
+}
+/* No computer "breathing" on characters any more: life comes from the line boil and drawn frames. */
+.sc-char { animation: none; }
+.sc .fg-f2 { opacity: 0; }
+.sc-live .fg-walk .fg-f1 { animation: fg-frame-a 0.72s steps(1, end) infinite; animation-delay: var(--fg-delay, 0s); }
+.sc-live .fg-walk .fg-f2 { animation: fg-frame-b 0.72s steps(1, end) infinite; animation-delay: var(--fg-delay, 0s); }
+.sc-live .fg-jump .fg-body { animation: fg-hop 0.96s steps(1, end) infinite; animation-delay: var(--fg-delay, 0s); }
+.sc-live .fg-wave .fg-body, .sc-live .fg-cheer .fg-body { animation: fg-nod 1.8s steps(1, end) infinite; animation-delay: var(--fg-delay, 0s); }
+@keyframes fg-frame-a { 0% { opacity: 1; } 50% { opacity: 0; } }
+@keyframes fg-frame-b { 0% { opacity: 0; } 50% { opacity: 1; } }
+@keyframes fg-hop { 0% { transform: translateY(0); } 33% { transform: translateY(-9px); } 66% { transform: translateY(-4px); } }
+@keyframes fg-nod { 0% { transform: rotate(0deg); } 50% { transform: rotate(-1.6deg); } }
+.fg-body { transform-box: fill-box; transform-origin: 50% 100%; }
+/* Slow, natural motion only on the page being read; covers on the shelf stay still like printed ones. */
+.sc:not(.sc-live) :is(.sc-drift, .sc-fly, .sc-wave, .sc-bob, .sc-sway-slow, .sc-leaf, .sc-tuft, .sc-nibble, .sc-teddy, .sc-fall, .sc-twinkle) { animation: none; }
+.sc-tuft, .sc-leaf, .sc-sway-slow { animation-timing-function: steps(4, end); }
+.sc-fall { animation: sc-fall 9s linear infinite; transform-box: fill-box; transform-origin: center; }
+@keyframes sc-fall { 0% { transform: translate(0, -40px) rotate(0deg); opacity: 0; } 10% { opacity: 1; } 50% { transform: translate(24px, 120px) rotate(140deg); } 90% { opacity: 1; } 100% { transform: translate(-6px, 280px) rotate(300deg); opacity: 0; } }
+
+/* Pages: white paper, the words on top, the painting underneath and fading into the page */
+.bk-paper { container-type: inline-size; background-color: #fdfaf3; }
+.bk-story { position: absolute; inset: 0; display: flex; flex-direction: column; padding: 8% 8% 0; }
+.bk-story-text { position: relative; z-index: 1; }
+.bk-story .bk-fr { font-family: 'Andika', 'Trebuchet MS', 'Segoe UI', system-ui, sans-serif; font-size: calc(4.1cqw * var(--fs, 1)); font-weight: 400; line-height: 1.42; color: #1f1a16; text-wrap: pretty; }
+.bk-story .bk-fr::first-letter { float: none; margin: 0; font-size: inherit; font-weight: inherit; line-height: inherit; color: inherit; }
+.bk-story .bk-en { font-family: 'Andika', system-ui, sans-serif; font-size: calc(3cqw * var(--fs, 1)); }
+.bk-story-art { margin: auto -8% 0; }
+.bk-story-art .sc { width: 100%; }
+.bk-story .bk-folio { position: absolute; bottom: 2.6%; right: auto; left: 50%; transform: translateX(-50%); z-index: 2; font-family: 'Andika', serif; font-size: 12px; color: #8d7a62; }
+/* Reading along: a felt-tip highlight under the word, not a computer box */
+.bk-story .bk-word[data-on] { background: linear-gradient(transparent 58%, rgba(255, 205, 80, 0.75) 58%, rgba(255, 205, 80, 0.75) 92%, transparent 92%); color: inherit; border-radius: 0; }
+.bk-spotpage { position: absolute; inset: 0; display: grid; place-content: center; justify-items: center; gap: 10px; padding: 8%; }
+.bk-spot { width: 78cqw; }
+.bk-spot-wide { width: 92cqw; }
+.bk-vignette { overflow: visible; border-radius: 0; box-shadow: none; width: 84%; }
+.bk-titlepage .bk-h { font-family: 'Andika', 'Grandstander', system-ui, sans-serif; font-weight: 700; }
+.bk-paper-single .bk-story { position: relative; inset: auto; min-height: 0; padding-bottom: 0; }
+.bk-paper-single .bk-story .bk-fr { font-size: calc(4.6cqw * var(--fs, 1)); }
+.bk-paper-single .bk-spotpage { position: relative; }
+@media (prefers-reduced-motion: reduce) { .sc-live * { animation: none !important; } }
+
+/* Painted edges that fade into the paper (a soft mask, so the picture can fill any page shape). */
+.sc-page { -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 400' preserveAspectRatio='none'%3E%3Cfilter id='r' x='-20%25' y='-20%25' width='140%25' height='140%25'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.025' numOctaves='3' seed='4'/%3E%3CfeDisplacementMap in='SourceGraphic' scale='30' xChannelSelector='R' yChannelSelector='G'/%3E%3CfeGaussianBlur stdDeviation='7'/%3E%3C/filter%3E%3Cpath filter='url(%23r)' fill='%23fff' d='M36 84 Q 40 34 100 32 L 300 30 Q 362 32 364 90 L 366 320 Q 364 368 300 368 L 100 370 Q 38 368 36 316 Z'/%3E%3C/svg%3E"); mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 400' preserveAspectRatio='none'%3E%3Cfilter id='r' x='-20%25' y='-20%25' width='140%25' height='140%25'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.025' numOctaves='3' seed='4'/%3E%3CfeDisplacementMap in='SourceGraphic' scale='30' xChannelSelector='R' yChannelSelector='G'/%3E%3CfeGaussianBlur stdDeviation='7'/%3E%3C/filter%3E%3Cpath filter='url(%23r)' fill='%23fff' d='M36 84 Q 40 34 100 32 L 300 30 Q 362 32 364 90 L 366 320 Q 364 368 300 368 L 100 370 Q 38 368 36 316 Z'/%3E%3C/svg%3E"); -webkit-mask-size: 100% 100%; mask-size: 100% 100%; }
+.bk-story-art { flex: 1; min-height: 0; display: flex; margin: 3% -8% 0; }
+.bk-story-art .sc-page { flex: 1; height: auto; aspect-ratio: auto; -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 400' preserveAspectRatio='none'%3E%3Cfilter id='r' x='-20%25' y='-20%25' width='140%25' height='140%25'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.025' numOctaves='3' seed='4'/%3E%3CfeDisplacementMap in='SourceGraphic' scale='30' xChannelSelector='R' yChannelSelector='G'/%3E%3CfeGaussianBlur stdDeviation='7'/%3E%3C/filter%3E%3Cpath filter='url(%23r)' fill='%23fff' d='M30 80 Q 34 30 96 28 L 304 24 Q 368 26 370 88 L 376 460 L 24 460 Z'/%3E%3C/svg%3E"); mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 400' preserveAspectRatio='none'%3E%3Cfilter id='r' x='-20%25' y='-20%25' width='140%25' height='140%25'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.025' numOctaves='3' seed='4'/%3E%3CfeDisplacementMap in='SourceGraphic' scale='30' xChannelSelector='R' yChannelSelector='G'/%3E%3CfeGaussianBlur stdDeviation='7'/%3E%3C/filter%3E%3Cpath filter='url(%23r)' fill='%23fff' d='M30 80 Q 34 30 96 28 L 304 24 Q 368 26 370 88 L 376 460 L 24 460 Z'/%3E%3C/svg%3E"); }
+.bk-story .bk-folio { top: 3.2%; bottom: auto; left: auto; right: 5%; transform: none; }
+.bk-paper-single .bk-story-art .sc-page { flex: none; width: 100%; aspect-ratio: 1 / 1; }
