@@ -3,7 +3,7 @@ import {
   LEARNERS,
   LEARNING_GOALS,
   PLACEMENT_LEVELS,
-  PLACEMENT_QUESTIONS,
+  PLACEMENT_QUESTION_COUNT,
   TUTORS,
   type CefrLevel,
   type ImmersionPack,
@@ -11,7 +11,9 @@ import {
   type Localized,
   type PackKind,
   type PackTheme,
+  type PlacementItem,
   type PlacementResult,
+  PLACEMENT_RETAKE_DAYS,
 } from '@laporte/shared';
 import { AnimatePresence, motion } from 'motion/react';
 import { useState } from 'react';
@@ -23,6 +25,7 @@ import { Icon, type IconName } from '../../components/ui/Icon';
 import { Modal } from '../../components/ui/Overlay';
 import { useToast } from '../../components/ui/Toasts';
 import { TypedOnlyTextarea } from '../../components/ui/TypedOnly';
+import { ProtectedTest } from '../../features/assessment/ProtectedTest';
 import { useI18n } from '../../i18n/I18nProvider';
 import { useStore } from '../../state/AppStore';
 import { formatDate } from '../../utils/format';
@@ -346,13 +349,13 @@ function PackEditor({ pack, onClose }: { pack?: ImmersionPack; onClose: () => vo
 const TIMES = { morning: { en: 'Mornings', fr: 'Le matin' }, lunch: { en: 'Lunchtime', fr: 'À midi' }, evening: { en: 'Evenings', fr: 'Le soir' }, weekend: { en: 'Weekends', fr: 'Le week-end' } } as const;
 type Time = keyof typeof TIMES;
 
-export function PlacementPage() {
+/** The entry assessment. On the start screen (after sign-up) it opens with the take-or-skip choice. */
+export function PlacementPage({ onboarding }: { onboarding?: boolean } = {}) {
   const { t, l, lang } = useI18n();
   const fr = lang === 'fr';
   const [params] = useSearchParams();
   const welcome = params.get('welcome') === '1';
   const { content, learner, actions } = useStore();
-  const toast = useToast();
   const existing = content.placements.find((p) => p.learnerId === learner.id);
   const [step, setStep] = useState(existing ? 99 : 0); // 0 intro · 1–N levels · N+1 writing · N+2 goals · 99 result
   const [answers, setAnswers] = useState<Record<string, number>>({});
@@ -365,7 +368,23 @@ export function PlacementPage() {
   const [skipped, setSkipped] = useState(false);
 
   const level = PLACEMENT_LEVELS[step - 1];
-  const levelQs = PLACEMENT_QUESTIONS.filter((q) => q.level === level);
+  // Questions come from a server attempt: no answers, options shuffled for this learner.
+  const [attempt, setAttempt] = useState<{ attemptId: string; questions: PlacementItem[] } | null>(null);
+  const [starting, setStarting] = useState(false);
+  const levelQs = (attempt?.questions ?? []).filter((q) => q.level === level);
+  const startTest = async () => {
+    setError(null);
+    setStarting(true);
+    try {
+      setAttempt(await actions.content.placementAttempt());
+      setAnswers({});
+      setStep(1);
+    } catch (e) {
+      setError(errorText(e));
+    } finally {
+      setStarting(false);
+    }
+  };
   const words = writing.trim() ? writing.trim().split(/\s+/).length : 0;
   const N = PLACEMENT_LEVELS.length; // A1 → C2
   const WRITING = N + 1;
@@ -376,7 +395,7 @@ export function PlacementPage() {
   const finish = async () => {
     setError(null);
     try {
-      const r = await actions.content.takePlacement({ answers, writingSample: writing, goals, hoursPerWeek: hours, preferredTimes: times });
+      const r = await actions.content.takePlacement({ attemptId: skipped ? undefined : attempt?.attemptId, answers: skipped ? {} : answers, writingSample: writing, goals, hoursPerWeek: hours, preferredTimes: times });
       setResult(r);
       setStep(99);
     } catch (e) {
@@ -386,11 +405,30 @@ export function PlacementPage() {
 
   return (
     <div className="placement">
-      <PageHead title={t('app.placement')} sub={fr ? '15 minutes pour trouver votre niveau (A1 à C2) et recevoir un programme personnel.' : '15 minutes to find your level (A1 to C2) and get a personal learning plan.'} />
+      {!onboarding && <PageHead title={t('app.placement')} sub={fr ? '15 minutes pour trouver votre niveau (A1 à C2) et recevoir un programme personnel.' : '15 minutes to find your level (A1 to C2) and get a personal learning plan.'} />}
+      {step === 0 && error && <p className="field-error" role="alert" style={{ marginBottom: 12 }}>{error}</p>}
       {step !== 99 && <div className="placement-bar" aria-hidden><span style={{ width: `${progress}%` }} /></div>}
       <AnimatePresence mode="wait">
         <motion.section key={step} className="card placement-card" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={spring.settle}>
-          {step === 0 && (
+          {step === 0 && onboarding && (
+            <div className="start-choice">
+              <button type="button" className="start-option start-option-main" onClick={() => void startTest()} disabled={starting} aria-busy={starting}>
+                <span className="start-option-icon" aria-hidden><Icon name="award" size={26} /></span>
+                <strong>{fr ? 'Passer le test de niveau' : 'Take the entry assessment'}</strong>
+                <span className="small">{fr ? `15 minutes · ${PLACEMENT_QUESTION_COUNT} questions de A1 à C2, puis quelques lignes en français.` : `15 minutes · ${PLACEMENT_QUESTION_COUNT} questions from A1 to C2, then a few lines of French.`}</span>
+                <span className="tiny">{fr ? 'Votre résultat fixe le niveau de vos cours.' : 'Your result sets the level of your courses.'}</span>
+                <span className="start-option-cta">{fr ? 'Commencer' : 'Start'} <Icon name="arrowRight" size={15} /></span>
+              </button>
+              <button type="button" className="start-option" onClick={() => { setSkipped(true); setAnswers({}); setWriting(''); setStep(GOALS); }}>
+                <span className="start-option-icon" aria-hidden><Icon name="book" size={26} /></span>
+                <strong>{fr ? 'Passer et commencer au niveau A1' : 'Skip and start at A1'}</strong>
+                <span className="small">{fr ? 'Pour les débutants. Vos cours s’ouvrent au niveau A1.' : 'For beginners. Your courses open at A1.'}</span>
+                <span className="tiny">{fr ? 'Vous pourrez passer le test plus tard.' : 'You can take the test later.'}</span>
+                <span className="start-option-cta">{fr ? 'Commencer en A1' : 'Start at A1'} <Icon name="arrowRight" size={15} /></span>
+              </button>
+            </div>
+          )}
+          {step === 0 && !onboarding && (
             <div className="stack" style={{ ['--gap' as string]: '16px' }}>
               {welcome && (
                 <p className="placement-welcome" lang={fr ? 'fr' : undefined}>
@@ -399,18 +437,19 @@ export function PlacementPage() {
               )}
               <h2 className="h3">{fr ? 'Comment ça marche' : 'How it works'}</h2>
               <ol className="steps-list">
-                <li>{fr ? `${PLACEMENT_QUESTIONS.length} questions courtes, du niveau A1 au C2` : `${PLACEMENT_QUESTIONS.length} short questions, from A1 to C2`}</li>
+                <li>{fr ? `${PLACEMENT_QUESTION_COUNT} questions courtes, du niveau A1 au C2` : `${PLACEMENT_QUESTION_COUNT} short questions, from A1 to C2`}</li>
                 <li>{fr ? 'Quelques lignes en français, tapées par vous' : 'A few lines of French, typed by you'}</li>
                 <li>{fr ? 'Vos objectifs et vos disponibilités' : 'Your goals and availability'}</li>
               </ol>
               <p className="small muted">{fr ? 'Pas de pression : arrêtez-vous dès que les questions deviennent trop difficiles. Votre tuteur confirme ensuite votre niveau.' : 'No pressure: stop when questions get too hard. Your tutor then confirms your level.'}</p>
               <div className="row">
-                <button className="btn btn-brand" onClick={() => setStep(1)}><span>{fr ? 'Commencer le test' : 'Start the test'}</span> <Icon name="arrowRight" size={15} /></button>
+                <button className="btn btn-brand" onClick={() => void startTest()} disabled={starting} aria-busy={starting}><span>{fr ? 'Commencer le test' : 'Start the test'}</span> <Icon name="arrowRight" size={15} /></button>
                 <button className="btn btn-ghost" onClick={() => { setSkipped(true); setAnswers({}); setWriting(''); setStep(GOALS); }}>{fr ? 'Passer : commencer au niveau A1' : 'Skip: start at beginner level (A1)'}</button>
               </div>
             </div>
           )}
           {step >= 1 && step <= N && (
+            <ProtectedTest>
             <div className="stack" style={{ ['--gap' as string]: '18px' }}>
               <div className="row between"><h2 className="h3">{fr ? 'Niveau' : 'Level'} {level}</h2><span className="tiny muted">{step}/{N}</span></div>
               {levelQs.map((q, qi) => (
@@ -431,6 +470,7 @@ export function PlacementPage() {
                 <button className="btn btn-brand" disabled={levelQs.some((q) => answers[q.id] === undefined)} onClick={() => setStep(step + 1)}><span>{fr ? 'Suivant' : 'Next'}</span> <Icon name="arrowRight" size={15} /></button>
               </div>
             </div>
+            </ProtectedTest>
           )}
           {step === WRITING && (
             <div className="stack" style={{ ['--gap' as string]: '14px' }}>
@@ -480,6 +520,34 @@ export function PlacementPage() {
                   <p className="small muted">{skipped || Object.keys(result.answers).length === 0 ? (fr ? 'Vous commencez au niveau débutant.' : 'You start at beginner level.') : fr ? 'Provisoire : votre tuteur confirmera après avoir lu votre texte.' : 'Provisional: your tutor confirms it after reading your writing.'}</p>
                 </div>
               </div>
+              {(() => {
+                const took = Object.keys(result.answers).length > 0;
+                if (!took) return <p className="small placement-skip-note">{fr ? 'Vous avez passé le test : vos cours sont ouverts au niveau A1. Passez le test quand vous voulez pour viser plus haut, ou achetez le niveau suivant.' : 'You skipped the test, so your courses open at A1. Take the test any time to aim higher, or buy the next level.'}</p>;
+                const correct = PLACEMENT_LEVELS.reduce((n, lv) => n + (result.scores[lv]?.correct ?? 0), 0);
+                const totalQs = PLACEMENT_LEVELS.reduce((n, lv) => n + (result.scores[lv]?.total ?? 0), 0);
+                return (
+                  <div className="placement-score">
+                    <div className="placement-score-head">
+                      <strong className="num">{correct}/{totalQs}</strong>
+                      <span className="small muted">{fr ? `bonnes réponses · ${Math.round((correct / totalQs) * 100)} %` : `correct answers · ${Math.round((correct / totalQs) * 100)}%`}</span>
+                    </div>
+                    <div className="placement-bands" aria-label={fr ? 'Résultat par niveau' : 'Score by level'}>
+                      {PLACEMENT_LEVELS.map((lv) => {
+                        const s = result.scores[lv] ?? { correct: 0, total: 3 };
+                        const passed = s.correct >= 2;
+                        return (
+                          <div key={lv} className="placement-band" data-passed={passed || undefined} data-current={lv === result.level || undefined}>
+                            <span className="placement-band-level">{lv}</span>
+                            <span className="placement-band-bar"><span style={{ width: `${(s.correct / s.total) * 100}%` }} /></span>
+                            <span className="tiny num">{s.correct}/{s.total}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    <p className="tiny muted">{fr ? 'Un niveau est validé avec au moins 2 bonnes réponses sur 3, et tous les niveaux en dessous validés. Vos cours sont ouverts jusqu’à ce niveau.' : 'A level counts as passed with at least 2 of 3 correct, and every level below it passed. Your courses open up to this level.'}</p>
+                  </div>
+                );
+              })()}
               <div className="plan-grid">
                 <div><span className="tiny muted">{fr ? 'Autonomie / semaine' : 'Self-study / week'}</span><strong className="num">{Math.round(result.plan.weeklySelfPacedMinutes / 6) / 10} h</strong></div>
                 <div><span className="tiny muted">{fr ? 'Séances d’immersion / semaine' : 'Immersion sessions / week'}</span><strong className="num">{result.plan.weeklyLiveSessions}</strong></div>
@@ -496,8 +564,15 @@ export function PlacementPage() {
               </div>
               <ol className="steps-list">{result.plan.firstSteps.map((s, i) => <li key={i}>{l(s)}</li>)}</ol>
               <div className="row">
-                <Link to="/app" className="btn btn-brand"><span>{fr ? 'Aller au tableau de bord' : 'Go to my dashboard'}</span></Link>
-                <button className="btn btn-ghost btn-sm" onClick={() => { setAnswers({}); setWriting(''); setStep(0); toast(fr ? 'Vous pouvez repasser le test' : 'You can retake the test'); }}>{fr ? 'Repasser le test' : 'Retake the test'}</button>
+                <Link to={onboarding ? '/app/courses' : '/app'} className="btn btn-brand"><span>{onboarding ? (fr ? `Commencer mes cours ${result.level}` : `Start my ${result.level} courses`) : fr ? 'Aller au tableau de bord' : 'Go to my dashboard'}</span></Link>
+                {(() => {
+                  const took = Object.keys(result.answers).length > 0;
+                  const retakeAt = Date.parse(result.takenAt) + PLACEMENT_RETAKE_DAYS * 86_400_000;
+                  if (took && Date.now() < retakeAt)
+                    return <span className="tiny muted">{fr ? `Nouveau test possible le ${formatDate(new Date(retakeAt).toISOString(), lang, { day: 'numeric', month: 'long' })}` : `You can retake the test on ${formatDate(new Date(retakeAt).toISOString(), lang, { day: 'numeric', month: 'long' })}`}</span>;
+                  return <button className="btn btn-ghost btn-sm" onClick={() => { setAnswers({}); setWriting(''); setSkipped(false); setAttempt(null); setStep(0); }}>{took ? (fr ? 'Repasser le test' : 'Retake the test') : fr ? 'Passer le test maintenant' : 'Take the test now'}</button>;
+                })()}
+                <Link to="/app/courses" className="btn btn-secondary btn-sm">{fr ? `Mes cours ${result.level}` : `My ${result.level} courses`}</Link>
               </div>
             </div>
           )}

@@ -1,4 +1,4 @@
-import { BOOKINGS, CLOCK_FIXED, DEMO_LEARNER_ID, DEMO_TODAY, DEMO_TUTOR_ID, LEARNERS, MESSAGE_THREADS, MILESTONES, NOTIFICATIONS, PAYMENTS, TUTORS, VOCABULARY, CONTACT_BLOCK_MESSAGE, SEED_SHIFT_DAYS, shiftIso, canContact, isClassmate, communityOps, type Cohort, type SessionPurpose, nowIso, findContactDetails, pointsFor, questProgress, seedContent, visibleContent, type AppNotification, type ContentState, type ContentUser, type LessonInput, type LessonPatch, type PackInput, type PlacementInput, type QuestId, type TransitionAction, type Booking, type Learner, type MessageThread, type Milestone, type Payment, type PaymentMethod, type Role, type VocabEntry } from '@laporte/shared';
+import { BOOKINGS, CLOCK_FIXED, DEMO_LEARNER_ID, DEMO_TODAY, DEMO_TUTOR_ID, LEARNERS, MESSAGE_THREADS, MILESTONES, NOTIFICATIONS, PAYMENTS, TUTORS, VOCABULARY, CONTACT_BLOCK_MESSAGE, SEED_SHIFT_DAYS, shiftIso, canContact, isClassmate, communityOps, type Cohort, type SessionPurpose, nowIso, findContactDetails, pointsFor, questProgress, seedContent, visibleContent, type AppNotification, type ContentState, type ContentUser, type LessonInput, type LessonPatch, type PackInput, type PlacementInput, type QuestId, type TransitionAction, type Booking, type Learner, type MessageThread, type Milestone, type Payment, type PaymentMethod, type Role, type VocabEntry, ownedBy, type SignUpInput } from '@laporte/shared';
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 import { computeAvailability, type Slot } from '../features/bookings/availability';
 import { api, type ServerSnapshot, type UploadMeta } from '../services/api';
@@ -16,6 +16,8 @@ type ServerSlice = ServerSnapshot;
 /** Prototype-only state that has no backend yet (always kept in this browser). */
 interface LocalSlice {
   role: Role;
+  /** The signed-in learner (the demo starts as Ama Owusu). */
+  learnerId: string;
   milestones: Milestone[];
   availability: Record<string, Record<number, string[]>>;
   notes: Record<string, { text: string; at: string }[]>;
@@ -39,6 +41,7 @@ const seedServer = (): ServerSlice => ({
 
 const seedLocal = (): LocalSlice => ({
   role: 'learner',
+  learnerId: DEMO_LEARNER_ID,
   milestones: structuredClone(MILESTONES),
   availability: Object.fromEntries(TUTORS.map((t) => [t.id, structuredClone(t.availability)])),
   notes: {
@@ -61,6 +64,9 @@ function load<T>(key: string, fallback: () => T): T {
 }
 
 type Connection = 'checking' | 'api' | 'offline';
+
+/** A new learner's passport: the same milestones, nothing completed yet. */
+const freshMilestones: Milestone[] = MILESTONES.map((m, i) => ({ ...m, status: i === 0 ? 'in-progress' : 'upcoming', progress: 0, completedOn: undefined, evidence: [] }));
 
 function useStoreValue() {
   const [server, setServer] = useState<ServerSlice>(() => {
@@ -101,8 +107,11 @@ function useStoreValue() {
 
   setDisplayTimeZone(local.timeZone);
 
-  const userId = local.role === 'learner' ? DEMO_LEARNER_ID : local.role === 'instructor' ? DEMO_TUTOR_ID : DEMO_ADMIN_ID;
-  const learner = server.learners.find((l) => l.id === DEMO_LEARNER_ID)!;
+  const learnerId = server.learners.some((l) => l.id === local.learnerId) ? local.learnerId : DEMO_LEARNER_ID;
+  const learnerIdRef = useRef(learnerId);
+  learnerIdRef.current = learnerId;
+  const userId = local.role === 'learner' ? learnerId : local.role === 'instructor' ? DEMO_TUTOR_ID : DEMO_ADMIN_ID;
+  const learner = server.learners.find((l) => l.id === learnerId)!;
   const user: ContentUser = { id: userId, role: local.role };
   const userRef = useRef(user);
   userRef.current = user;
@@ -130,8 +139,8 @@ function useStoreValue() {
 
   const ctx = useCallback(
     () => ({
-      userId: DEMO_LEARNER_ID,
-      learner: serverRef.current.learners.find((l) => l.id === DEMO_LEARNER_ID),
+      userId: learnerIdRef.current,
+      learner: serverRef.current.learners.find((l) => l.id === learnerIdRef.current),
       bookings: serverRef.current.bookings,
       payments: serverRef.current.payments,
       content: serverRef.current.content,
@@ -155,6 +164,24 @@ function useStoreValue() {
 
   const actions = {
     setRole: (role: Role) => setLocal((l) => ({ ...l, role })),
+
+    /** Demo accounts: create a learner and sign in as them. */
+    async register(input: SignUpInput) {
+      const created = await api.register(input, serverRef.current.learners);
+      serverRef.current = { ...serverRef.current, learners: [...serverRef.current.learners.filter((x) => x.id !== created.id), created] };
+      setServer((s) => ({ ...s, learners: [...s.learners.filter((x) => x.id !== created.id), created] }));
+      setLocal((l) => ({ ...l, role: 'learner', learnerId: created.id }));
+      return created;
+    },
+    async login(email: string) {
+      const found = await api.login(email, serverRef.current.learners);
+      if (!serverRef.current.learners.some((x) => x.id === found.id)) setServer((s) => ({ ...s, learners: [...s.learners, found] }));
+      setLocal((l) => ({ ...l, role: 'learner', learnerId: found.id }));
+      return found;
+    },
+    /** The ready-made demo learner, Ama Owusu. */
+    useDemoLearner: () => setLocal((l) => ({ ...l, role: 'learner', learnerId: DEMO_LEARNER_ID })),
+
     setTimeZone: (timeZone: string) => setLocal((l) => ({ ...l, timeZone })),
     markQuizRetried: (lessonId: string) => setLocal((l) => (l.quizRetried.includes(lessonId) ? l : { ...l, quizRetried: [...l.quizRetried, lessonId] })),
 
@@ -167,7 +194,7 @@ function useStoreValue() {
     async bookLesson(input: { tutorId: string; start: string; topic: string; purpose?: SessionPurpose; missedSessionId?: string }) {
       const result = await api.createBooking(ctx(), input);
       upsertBooking(result.booking);
-      patchLearner(DEMO_LEARNER_ID, { credits: result.creditsRemaining });
+      patchLearner(learnerIdRef.current, { credits: result.creditsRemaining });
       const tutor = TUTORS.find((t) => t.id === input.tutorId)!;
       pushNotification({
         channel: 'whatsapp',
@@ -181,7 +208,7 @@ function useStoreValue() {
     async cancelLesson(id: string, input: { reason: string; emergency?: boolean }) {
       const result = await api.cancelBooking(ctx(), id, input);
       upsertBooking(result.booking);
-      patchLearner(DEMO_LEARNER_ID, { credits: result.creditsRemaining });
+      patchLearner(learnerIdRef.current, { credits: result.creditsRemaining });
       return result.booking;
     },
 
@@ -208,7 +235,7 @@ function useStoreValue() {
     async verifyPayment(reference: string) {
       const result = await api.verifyPayment(ctx(), reference);
       upsertPayment(result.payment);
-      patchLearner(result.learner.id, { planId: result.learner.planId, credits: result.learner.credits });
+      patchLearner(result.learner.id, { planId: result.learner.planId, credits: result.learner.credits, unlockedLevel: result.learner.unlockedLevel });
       // A reward discount is used only once the payment succeeds.
       if (result.payment.status === 'success' && result.payment.discount) {
         if (connection === 'api') {
@@ -232,12 +259,12 @@ function useStoreValue() {
     },
 
     async addVocab(entry: Pick<VocabEntry, 'fr' | 'en' | 'example' | 'source'>) {
-      const saved = await api.addVocabulary(entry).catch(() => null);
-      const record: VocabEntry = saved ?? { ...entry, id: `v-${Date.now()}`, addedOn: DEMO_TODAY, mastered: false };
-      setServer((s) => (s.vocabulary.some((v) => v.fr === record.fr) ? s : { ...s, vocabulary: [record, ...s.vocabulary] }));
+      const saved = await api.addVocabulary(entry, learnerIdRef.current).catch(() => null);
+      const record: VocabEntry = saved ?? { ...entry, learnerId: learnerIdRef.current, id: `v-${Date.now()}`, addedOn: DEMO_TODAY, mastered: false };
+      setServer((s) => (s.vocabulary.some((v) => v.id === record.id || (ownedBy(v, learnerIdRef.current) && v.fr === record.fr)) ? s : { ...s, vocabulary: [record, ...s.vocabulary] }));
     },
     toggleMastered(id: string) {
-      void api.toggleVocabulary(id).catch(() => undefined);
+      void api.toggleVocabulary(id, learnerIdRef.current).catch(() => undefined);
       setServer((s) => ({ ...s, vocabulary: s.vocabulary.map((v) => (v.id === id ? { ...v, mastered: !v.mastered } : v)) }));
     },
 
@@ -308,22 +335,25 @@ function useStoreValue() {
       setVisible: (visible: boolean) => contentRun((s, u) => api.community.setLeaderboardVisibility(s, u, visible)),
       async redeem(tokenId: string) {
         const out = await contentRun((s, u) => api.community.redeemToken(s, u, tokenId));
-        patchLearner(DEMO_LEARNER_ID, { credits: out.learner?.credits ?? learner.credits + out.token.value });
+        patchLearner(learnerIdRef.current, { credits: out.learner?.credits ?? learner.credits + out.token.value });
       },
       /** Classmates (same group or level) can text and call by default; others need a follow. Contact details are never allowed. */
-      canMessage: (otherId: string) => canContact(serverRef.current.content, DEMO_LEARNER_ID, otherId),
-      isClassmate: (otherId: string) => isClassmate(serverRef.current.content, DEMO_LEARNER_ID, otherId),
+      canMessage: (otherId: string) => canContact(serverRef.current.content, learnerIdRef.current, otherId),
+      isClassmate: (otherId: string) => isClassmate(serverRef.current.content, learnerIdRef.current, otherId),
       async message(otherId: string, body: string) {
         if (findContactDetails(body).length) throw new ApiError(422, 'contact_details_blocked', CONTACT_BLOCK_MESSAGE.en);
         if (!actions.community.canMessage(otherId)) throw new ApiError(403, 'not_connected', 'Follow this learner to message them.');
         const fromServer = await api.community.startThread(userRef.current, otherId, body);
-        const existing = serverRef.current.threads.find((t) => t.participantIds.length === 2 && t.participantIds.includes(DEMO_LEARNER_ID) && t.participantIds.includes(otherId));
-        const msg = { id: `m-${Date.now()}`, from: DEMO_LEARNER_ID, body, at: new Date().toISOString() };
-        const thread = fromServer ?? (existing ? { ...existing, messages: [...existing.messages, msg] } : { id: `thr-${Date.now().toString(36)}`, participantIds: [DEMO_LEARNER_ID, otherId], subject: 'Classmate', messages: [msg] });
+        const existing = serverRef.current.threads.find((t) => t.participantIds.length === 2 && t.participantIds.includes(learnerIdRef.current) && t.participantIds.includes(otherId));
+        const msg = { id: `m-${Date.now()}`, from: learnerIdRef.current, body, at: new Date().toISOString() };
+        const thread = fromServer ?? (existing ? { ...existing, messages: [...existing.messages, msg] } : { id: `thr-${Date.now().toString(36)}`, participantIds: [learnerIdRef.current, otherId], subject: 'Classmate', messages: [msg] });
         setServer((s) => ({ ...s, threads: s.threads.some((t) => t.id === thread.id) ? s.threads.map((t) => (t.id === thread.id ? thread : t)) : [thread, ...s.threads] }));
         return thread.id;
       },
     },
+
+    /** Spaced-repetition review of the learner's vocabulary. */
+    reviewWord: (vocabId: string, grade: Parameters<typeof api.review.review>[3]) => contentRun((s, u) => api.review.review(s, u, vocabId, grade)),
 
     /** La Porte Kids (profiles belong to the parent's learner account). */
     kids: {
@@ -349,9 +379,10 @@ function useStoreValue() {
       reviewAssignment: (id: string, feedback: string) => contentRun((s, u) => api.content.reviewAssignment(s, u, id, feedback)),
       completeLesson: (id: string, quizScore?: { correct: number; total: number }) => contentRun((s, u) => api.content.completeLesson(s, u, id, quizScore)),
       claimQuest: (questId: QuestId) => contentRun((s, u) => api.content.claimQuest(s, u, { id: learner.id, streakDays: learner.streakDays }, questId)),
-      async takePlacement(input: PlacementInput) {
+      placementAttempt: () => api.content.placementAttempt(userRef.current),
+      async takePlacement(input: PlacementInput & { attemptId?: string }) {
         const out = await contentRun((s, u) => api.content.placement(s, u, input));
-        patchLearner(DEMO_LEARNER_ID, { level: out.result.level });
+        patchLearner(learnerIdRef.current, { level: out.result.level });
         return out.result;
       },
     },
@@ -365,9 +396,21 @@ function useStoreValue() {
     },
   };
 
+  const isLearner = local.role === 'learner';
+  const mine = {
+    bookings: isLearner ? server.bookings.filter((b) => b.learnerId === learnerId) : server.bookings,
+    payments: isLearner ? server.payments.filter((p) => p.learnerId === learnerId) : server.payments,
+    threads: isLearner ? server.threads.filter((t) => t.participantIds.includes(learnerId)) : server.threads,
+    vocabulary: server.vocabulary.filter((v) => ownedBy(v, learnerId)),
+    notifications: isLearner ? server.notifications.filter((n) => ownedBy(n, learnerId)) : server.notifications,
+    // The seeded passport history is Ama's; other learners start their own.
+    milestones: learnerId === DEMO_LEARNER_ID ? local.milestones : freshMilestones,
+  };
+
   return {
     ...server,
     ...local,
+    ...mine,
     connection,
     userId,
     user,

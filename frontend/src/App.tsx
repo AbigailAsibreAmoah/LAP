@@ -7,7 +7,7 @@ import { I18nProvider } from './i18n/I18nProvider';
 import { AppLayout } from './layouts/AppLayout';
 import { PublicLayout } from './layouts/PublicLayout';
 import { HomePage } from './pages/public/HomePage';
-import { AboutPage, AuthPage, CorporatePage, CourseDetailPage, CoursesPage, HelpPage, HowItWorksPage, PricingPage, TutorsPage } from './pages/public/PublicPages';
+import { AboutPage, AuthPage, CorporatePage, CourseDetailPage, CoursesPage, HelpPage, HowItWorksPage, PricingPage } from './pages/public/PublicPages';
 import { AppStoreProvider } from './state/AppStore';
 
 // Workspaces are split from the public site so the first visit loads only what it needs.
@@ -28,6 +28,7 @@ const CheckoutPage = named(() => import('./pages/learner/BillingPages'), 'Checko
 const MessagesPage = named(() => import('./pages/shared/MessagesPage'), 'MessagesPage');
 const KidsProfilesPage = named(() => import('./pages/kids/KidsPages'), 'KidsProfilesPage');
 const KidModePage = named(() => import('./pages/kids/KidsPages'), 'KidModePage');
+const StartPage = named(() => import('./pages/onboarding/StartPage'), 'StartPage');
 const KidsGamesHostPage = named(() => import('./pages/kids/HostGamesPage'), 'KidsGamesHostPage');
 const InstructorDashboard = named(() => import('./pages/instructor/InstructorPages'), 'InstructorDashboard');
 const AvailabilityPage = named(() => import('./pages/instructor/InstructorPages'), 'AvailabilityPage');
@@ -60,7 +61,6 @@ export function App() {
                   <Route index element={<HomePage />} />
                   <Route path="courses" element={<CoursesPage />} />
                   <Route path="courses/:id" element={<CourseDetailPage />} />
-                  <Route path="tutors" element={<TutorsPage />} />
                   <Route path="how-it-works" element={<HowItWorksPage />} />
                   <Route path="pricing" element={<PricingPage />} />
                   <Route path="organisations" element={<CorporatePage />} />
@@ -112,6 +112,8 @@ export function App() {
                 </Route>
                 {/* Child mode sits outside the app layout: no sidebar, classmates, messages or calls. */}
                 <Route path="kids/:id" element={<KidModePage />} />
+                {/* After sign-up: a separate screen to take the entry assessment or start at A1. */}
+                <Route path="start" element={<StartPage />} />
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>
               </Suspense>

@@ -5,6 +5,7 @@ import { COURSES, LESSON_CONTENT, LEARNERS, OPENING_VIDEO_MAX_SECONDS, OPENING_V
 import { shiftDatesInPlace } from './clock';
 import type { Cohort, Follow, RewardToken } from './community';
 import type { ExternalGame, KidActivity, KidProfile } from './kids';
+import type { ReviewDay, VocabReview } from './review';
 import type { PlacementResult } from './policies';
 import type { CefrLevel, LessonKind, Localized, Phrase, QuizQuestion, Role } from './types';
 
@@ -165,6 +166,9 @@ export interface ContentState {
   kids: KidProfile[];
   kidActivities: KidActivity[];
   externalGames: ExternalGame[];
+  /** Spaced-repetition schedule for each learner's vocabulary, and reviews per day. */
+  vocabReviews: VocabReview[];
+  reviewDays: ReviewDay[];
 }
 
 export const REPORT_REASONS = {
@@ -343,6 +347,8 @@ export function visibleContent(state: ContentState, user: ContentUser): ContentS
       // Tutors never see children's profiles; in live games they see safe nicknames only.
       kids: [],
       kidActivities: [],
+      vocabReviews: [],
+      reviewDays: [],
     };
   return {
     ...state,
@@ -357,6 +363,8 @@ export function visibleContent(state: ContentState, user: ContentUser): ContentS
     reports: state.reports.filter((r) => r.reporterId === user.id),
     // A parent sees only their own children.
     kids: state.kids.filter((k) => k.parentId === user.id),
+    vocabReviews: state.vocabReviews.filter((r) => r.learnerId === user.id),
+    reviewDays: state.reviewDays.filter((d) => d.learnerId === user.id),
     kidActivities: state.kidActivities.filter((a) => state.kids.some((k) => k.id === a.kidId && k.parentId === user.id)),
     // Group answers are visible to the instructor only; a learner sees their own — and, when the instructor
     // turns sharing on, the group's answers once they have sent theirs.
@@ -370,6 +378,7 @@ export interface OutlineEntry {
   title: string;
   minutes: number;
   kind: LessonKind;
+  level: CefrLevel;
   videoSec?: number;
   status: ContentStatus;
   available: boolean;
@@ -387,7 +396,7 @@ export function courseOutline(state: ContentState, courseId: string) {
       .map((l): OutlineEntry => {
         const first = l.blocks[0];
         const v = first?.type === 'video' ? state.media.find((x) => x.id === first.assetId) : undefined;
-        return { id: l.id, title: l.title, minutes: l.minutes, kind: l.kind, videoSec: v?.durationSec, status: l.status, available: l.status === 'published' };
+        return { id: l.id, title: l.title, minutes: l.minutes, kind: l.kind, level: l.level, videoSec: v?.durationSec, status: l.status, available: l.status === 'published' };
       }),
   }));
 }
@@ -432,6 +441,9 @@ export type LessonInput = Pick<LessonDoc, 'courseId' | 'moduleIndex' | 'title' |
 export type LessonPatch = Partial<Pick<LessonDoc, 'moduleIndex' | 'title' | 'level' | 'kind' | 'minutes' | 'objective' | 'blocks'>>;
 export type TransitionAction = 'submit' | 'publish' | 'request-changes' | 'archive' | 'restore';
 export type PackInput = Pick<ImmersionPack, 'kind' | 'theme' | 'level' | 'title' | 'brief' | 'prompts' | 'vocabulary'>;
+
+/** A completed placement test can be retaken after this many days (skipping can be undone any time). */
+export const PLACEMENT_RETAKE_DAYS = 30;
 
 export const contentOps = {
   createLesson(state: ContentState, ctx: Ctx, input: LessonInput & { useTemplate?: boolean }) {
@@ -657,6 +669,10 @@ export const contentOps = {
     // Learners may skip the test and start at A1; a writing sample is only needed when they take it.
     const tookTest = Object.keys(result.answers).length > 0;
     if (tookTest && result.writingSample.trim().split(/\s+/).filter(Boolean).length < 15) fail(422, 'too_short', 'Write at least 15 words in French.');
+    const previous = state.placements.find((p) => p.learnerId === ctx.user.id);
+    const previousTaken = previous && Object.keys(previous.answers).length > 0;
+    if (previousTaken && Date.parse(ctx.now) - Date.parse(previous.takenAt) < PLACEMENT_RETAKE_DAYS * 86_400_000)
+      fail(409, 'retake_too_soon', `You can retake the placement test ${PLACEMENT_RETAKE_DAYS} days after your last one. To move up sooner, buy the next level.`);
     const next = structuredClone(state);
     next.placements = [result, ...next.placements.filter((p) => p.learnerId !== ctx.user.id)];
     return { state: next };
@@ -812,7 +828,7 @@ const SEED_ASSIGNMENTS: PackAssignment[] = [
 ];
 
 /** Lessons, media, packs and progress; community.ts adds cohorts, follows and rewards. */
-export function seedContentBase(): Omit<ContentState, 'cohorts' | 'follows' | 'tokens' | 'leaderboardOptOut' | 'reports' | 'kids' | 'kidActivities' | 'externalGames'> {
+export function seedContentBase(): Omit<ContentState, 'cohorts' | 'follows' | 'tokens' | 'leaderboardOptOut' | 'reports' | 'kids' | 'kidActivities' | 'externalGames' | 'vocabReviews' | 'reviewDays'> {
   const { lessons, media } = seedLessons();
   return shiftDatesInPlace({
     lessons,

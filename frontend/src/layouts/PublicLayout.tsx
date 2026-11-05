@@ -11,7 +11,6 @@ import type { MessageKey } from '../i18n/dictionary';
 
 const NAV: { to: string; key: MessageKey }[] = [
   { to: '/courses', key: 'nav.courses' },
-  { to: '/tutors', key: 'nav.tutors' },
   { to: '/how-it-works', key: 'nav.how' },
   { to: '/pricing', key: 'nav.pricing' },
   { to: '/organisations', key: 'nav.corporate' },
@@ -132,7 +131,6 @@ function Footer() {
           <div className="stack" style={{ ['--gap' as string]: '10px' }}>
             <h2 className="h4">{t('nav.courses')}</h2>
             <Link to="/courses">{t('courses.pathways')}</Link>
-            <Link to="/tutors">{t('nav.tutors')}</Link>
             <Link to="/pricing">{t('nav.pricing')}</Link>
           </div>
           <div className="stack" style={{ ['--gap' as string]: '10px' }}>

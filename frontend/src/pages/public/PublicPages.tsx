@@ -1,4 +1,4 @@
-import { ADDITIONAL_PACKAGES, COURSE_AREAS, COURSES, courseOutline, MEMBERSHIP_PLANS, PATHWAYS, TUTORS, type CefrLevel, type Course, type CourseAreaId, type Tutor } from '@laporte/shared';
+import { ADDITIONAL_PACKAGES, COURSE_AREAS, COURSES, courseOutline, MEMBERSHIP_PLANS, PATHWAYS, TUTORS, type CefrLevel, type Course, type CourseAreaId, type Tutor, canStudy, courseOpen, courseRange } from '@laporte/shared';
 import { AnimatePresence, motion } from 'motion/react';
 import { useState, type ReactNode } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
@@ -7,6 +7,9 @@ import { Reveal, StaggerGroup } from '../../components/animations/Reveal';
 import { ease, fadeUp, spring } from '../../components/animations/motion';
 import { DemoTag, EmptyState, Hint, Notice } from '../../components/ui/Controls';
 import { Icon } from '../../components/ui/Icon';
+import { START_PENDING_KEY } from '../onboarding/StartPage';
+import { writeLocal } from '../../utils/storage';
+import { LevelAccessBanner, LockedLevel } from '../../features/access/LevelAccess';
 import { useToast } from '../../components/ui/Toasts';
 import { ACCENT_BG, AreaEmblem, CourseCard } from '../../features/courses/CourseCard';
 import { useI18n } from '../../i18n/I18nProvider';
@@ -37,7 +40,17 @@ export function CoursesPage({ inApp }: { inApp?: boolean }) {
   const [params, setParams] = useSearchParams();
   const area = (params.get('area') as CourseAreaId | null) ?? 'all';
   const level = params.get('level') as CefrLevel | null;
-  const list = COURSES.filter((c) => (area === 'all' || c.area === area) && (!level || coversLevel(c, level)));
+  const { learner, content: library } = useStore();
+  // A course is open in the app when it has lessons at the learner's own level(s).
+  const hasOpenLessons = (c: (typeof COURSES)[number]) => {
+    const lessons = library.lessons.filter((x) => x.courseId === c.id && x.status !== 'archived');
+    return lessons.length ? lessons.some((x) => canStudy(learner, x.level)) : courseOpen(learner, c);
+  };
+  const filtered = COURSES.filter((c) => (area === 'all' || c.area === area) && (!level || coversLevel(c, level)));
+  // In the app, My Courses shows the courses at the learner's level; harder ones are listed as locked.
+  // My Courses shows only the courses at the learner's level; the rest open when they move up.
+  const list = inApp ? filtered.filter(hasOpenLessons) : filtered;
+  const above = inApp ? filtered.filter((c) => !hasOpenLessons(c)) : [];
   const base = inApp ? '/app/courses' : '/courses';
   const setFilter = (key: 'area' | 'level', value: string | null) => {
     const next = new URLSearchParams(params);
@@ -88,12 +101,21 @@ export function CoursesPage({ inApp }: { inApp?: boolean }) {
           </button>
         )}
       </p>
-      {list.length ? (
-        <StaggerGroup className="grid grid-3" key={`${area}-${level}`}>
-          {list.map((c) => (
-            <CourseCard key={c.id} course={c} to={`${base}/${c.id}`} />
-          ))}
-        </StaggerGroup>
+      {list.length || above.length ? (
+        <>
+          {list.length > 0 && (
+            <StaggerGroup className="grid grid-3" key={`${area}-${level}`}>
+              {list.map((c) => (
+                <CourseCard key={c.id} course={c} to={`${base}/${c.id}`} />
+              ))}
+            </StaggerGroup>
+          )}
+          {above.length > 0 && (
+            <p className="small muted level-more" style={{ marginTop: 24 }}>
+              <Icon name="lock" size={14} /> {lang === 'fr' ? `${above.length} autre(s) cours s’ouvriront à d’autres niveaux. Vous voyez uniquement le contenu de votre niveau.` : `${above.length} more course${above.length === 1 ? '' : 's'} open at other levels. You only see the content for your level.`}
+            </p>
+          )}
+        </>
       ) : (
         <EmptyState title={t('courses.none')}>
           {lang === 'fr' ? 'Essayez un autre niveau ou un autre domaine.' : 'Try another level or area.'}
@@ -112,6 +134,7 @@ export function CoursesPage({ inApp }: { inApp?: boolean }) {
           </div>
           <Link to="/app/placement" className="btn btn-secondary btn-sm"><Icon name="award" size={15} /> {t('cta.findLevel')}</Link>
         </div>
+        <div style={{ marginBottom: 24 }}><LevelAccessBanner /></div>
         {body}
       </>
     );
@@ -143,7 +166,7 @@ export function CourseDetailPage({ inApp }: { inApp?: boolean }) {
   // Published lessons come from the content library; catalogue lessons not yet published show as coming soon.
   const outline = courseOutline(library, course.id).map((m, i) => {
     const known = new Set(m.lessons.map((x) => x.id));
-    const pending = course.modules[i].lessons.filter((x) => !known.has(x.id)).map((x) => ({ ...x, status: 'draft' as const, available: false }));
+    const pending = course.modules[i].lessons.filter((x) => !known.has(x.id)).map((x) => ({ ...x, level: courseRange(course)[0], status: 'draft' as const, available: false }));
     return { title: m.title, lessons: [...m.lessons, ...pending] };
   });
   const published = outline.flatMap((m) => m.lessons).filter((x) => x.available);
@@ -192,9 +215,10 @@ export function CourseDetailPage({ inApp }: { inApp?: boolean }) {
                           <span className="tiny muted">{les.videoSec ? `${formatClip(les.videoSec)} video · ` : ''}{les.minutes} {t('common.min')}</span>
                         )}
                         {done.has(les.id) && <span style={{ color: 'var(--green)' }} title={lang === 'fr' ? 'Terminée' : 'Completed'}><Icon name="checkCircle" size={16} /></span>}
+                        {inApp && les.available && !canStudy(learner, les.level) && <LockedLevel level={les.level} />}
                         {inApp && les.available && (
                           <Link to={`/app/learn/${les.id}?course=${course.id}`} className="icon-btn" style={{ width: 32, height: 32 }} aria-label={les.title}>
-                            <Icon name={hasAccess ? 'play' : 'lock'} size={14} />
+                            <Icon name={hasAccess && canStudy(learner, les.level) ? 'play' : 'lock'} size={14} />
                           </Link>
                         )}
                       </li>
@@ -569,13 +593,32 @@ export function AuthPage({ mode }: { mode: 'login' | 'register' }) {
   const [params] = useSearchParams();
   const toPlacement = params.get('next') === 'placement';
   const enter = (role: 'learner' | 'instructor' | 'admin') => {
-    actions.setRole(role);
+    if (role === 'learner') actions.useDemoLearner();
+    else actions.setRole(role);
     navigate(role === 'learner' ? '/app' : `/${role}`);
   };
-  // New learners start with the placement test (they can still skip it and start at A1).
-  const submit = () => {
-    actions.setRole('learner');
-    navigate(mode === 'register' || toPlacement ? '/app/placement?welcome=1' : '/app');
+  const [authError, setAuthError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  // Sign-up creates a new learner account; log-in finds one by email. New learners then choose a
+  // starting level (entry assessment or A1) before using the app.
+  const submit = async (form: HTMLFormElement) => {
+    const data = new FormData(form);
+    setAuthError(null);
+    setBusy(true);
+    try {
+      if (mode === 'register') {
+        await actions.register({ name: String(data.get('name') ?? ''), email: String(data.get('email') ?? ''), areaId: String(data.get('area') ?? 'everyday') as CourseAreaId });
+        writeLocal(START_PENDING_KEY, '1');
+        navigate('/start');
+      } else {
+        await actions.login(String(data.get('email') ?? ''));
+        navigate(toPlacement ? '/start' : '/app');
+      }
+    } catch (e) {
+      setAuthError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusy(false);
+    }
   };
   return (
     <section style={{ background: 'radial-gradient(80% 100% at 80% 0%, #FFF6E6 0%, var(--ivory) 60%)', minHeight: 'calc(100vh - 72px)' }}>
@@ -592,25 +635,27 @@ export function AuthPage({ mode }: { mode: 'login' | 'register' }) {
             style={{ ['--gap' as string]: '14px', marginTop: 20 }}
             onSubmit={(e) => {
               e.preventDefault();
-              submit();
+              void submit(e.currentTarget);
             }}
           >
             {mode === 'register' && (
               <>
-                <label className="field"><span className="label">{t('auth.name')}</span><input className="input" autoComplete="name" required /></label>
+                <label className="field"><span className="label">{t('auth.name')}</span><input className="input" name="name" autoComplete="name" required minLength={2} /></label>
                 <label className="field">
                   <span className="label">{t('auth.goal')}</span>
-                  <select className="select">
+                  <select className="select" name="area" defaultValue="everyday">
                     {COURSE_AREAS.map((a) => (
-                      <option key={a.id}>{l(a.name)}</option>
+                      <option key={a.id} value={a.id}>{l(a.name)}</option>
                     ))}
                   </select>
                 </label>
               </>
             )}
-            <label className="field"><span className="label">{t('auth.email')}</span><input className="input" type="email" autoComplete="email" required /></label>
-            <label className="field"><span className="label">{t('auth.password')}</span><input className="input" type="password" autoComplete={mode === 'login' ? 'current-password' : 'new-password'} required minLength={6} /></label>
-            <button className="btn btn-primary btn-lg">{t('auth.continue')}</button>
+            <label className="field"><span className="label">{t('auth.email')}</span><input className="input" name="email" type="email" autoComplete="email" required /></label>
+            <label className="field"><span className="label">{t('auth.password')}</span><input className="input" name="password" type="password" autoComplete={mode === 'login' ? 'current-password' : 'new-password'} required minLength={6} /></label>
+            {authError && <p className="field-error" role="alert">{authError}{mode === 'register' && authError.includes('Log in') ? <> <Link to="/login" className="link">{t('nav.login')}</Link></> : null}</p>}
+            <button className="btn btn-primary btn-lg" disabled={busy} aria-busy={busy}>{t('auth.continue')}</button>
+            {mode === 'login' && <p className="tiny muted">{lang === 'fr' ? 'Démo : connectez-vous avec l’e-mail de votre compte (Ama : ama@laporte.demo). Pas de mot de passe dans le prototype.' : 'Demo: log in with your account’s email (Ama: ama@laporte.demo). The prototype has no passwords.'}</p>}
           </form>
           <Notice>{t('auth.notice')}</Notice>
           <p className="small muted" style={{ marginTop: 18 }}>{t('auth.or')}</p>

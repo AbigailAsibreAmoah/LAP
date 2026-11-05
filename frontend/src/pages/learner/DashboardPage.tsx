@@ -1,4 +1,4 @@
-import { COURSES, leaderboard, LEARNER_WEEKLY_MINUTES, levelFor, missedSessions, phraseOfDay, sessionCost, SPEAKING_SCENARIOS, TUTORS, type CefrLevel, type LessonKind, type QuestId } from '@laporte/shared';
+import { COURSES, leaderboard, LEARNER_WEEKLY_MINUTES, levelFor, missedSessions, phraseOfDay, sessionCost, SPEAKING_SCENARIOS, TUTORS, type CefrLevel, type LessonKind, type QuestId, dueToday, reviewStreak, canStudy } from '@laporte/shared';
 import { AnimatePresence, motion } from 'motion/react';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
@@ -17,8 +17,15 @@ import { useStore, type AppStore } from '../../state/AppStore';
 import { nowIso, formatClip, formatDate, formatTime, isUpcoming, relativeDay } from '../../utils/format';
 
 const LEVELS: CefrLevel[] = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'];
-const RESUME_LESSON = 'les-b5';
-const RESUME_COURSE = 'crs-business';
+/** Ama's lesson in the demo story; otherwise the learner's next open lesson at their level. */
+const DEMO_RESUME = { lessonId: 'les-b5', courseId: 'crs-business' };
+function pickResume(store: Pick<AppStore, 'content' | 'learner'>) {
+  const open = store.content.lessons.filter((x) => x.status === 'published' && canStudy(store.learner, x.level));
+  const done = new Set(store.content.completions.filter((x) => x.learnerId === store.learner.id).map((x) => x.lessonId));
+  const pick = open.find((x) => x.id === DEMO_RESUME.lessonId && !done.has(x.id)) ?? open.find((x) => !done.has(x.id)) ?? open[0];
+  const doc = pick ?? store.content.lessons.find((x) => x.id === DEMO_RESUME.lessonId);
+  return { RESUME_LESSON: doc?.id ?? DEMO_RESUME.lessonId, RESUME_COURSE: doc?.courseId ?? DEMO_RESUME.courseId, hasAssignment: !!doc?.blocks.some((b) => b.type === 'assignment'), title: doc?.title ?? '' };
+}
 
 type Tone = 'burgundy' | 'gold' | 'navy' | 'green' | 'sky';
 type PlanItem = { id: string; icon: IconName; tone?: 'urgent' | 'done'; title: string; meta: string; to?: string; cta?: string };
@@ -34,6 +41,9 @@ function buildPlan(store: AppStore, lang: 'en' | 'fr', t: ReturnType<typeof useI
   const { learner, bookings, submissions, completedScenarios, vocabulary, notifications } = store;
   const urgent: PlanItem[] = [];
   const rest: PlanItem[] = [];
+  const { RESUME_LESSON, RESUME_COURSE, hasAssignment, title: resumeTitle } = pickResume(store);
+  const today = nowIso().slice(0, 10);
+  const review = { ...dueToday(vocabulary, store.content, learner.id, today), streak: reviewStreak(store.content, learner.id, today) };
 
   const next = bookings
     .filter((b) => b.learnerId === learner.id && b.status === 'confirmed' && isUpcoming(b.start))
@@ -54,10 +64,10 @@ function buildPlan(store: AppStore, lang: 'en' | 'fr', t: ReturnType<typeof useI
     rest.push({ id: 'book', icon: 'calendar', title: fr ? 'Réserver une séance de conversation' : 'Book a conversation session', meta: `${learner.credits} ${t('dash.credits').toLowerCase()}`, to: '/app/book', cta: t('app.book') });
   }
 
-  if (!submissions[RESUME_LESSON]) {
-    urgent.push({ id: 'assignment', icon: 'edit', tone: 'urgent', title: t('dash.assignmentDue'), meta: 'Exprimer son accord ou son désaccord · ≥ 10 ' + t('lesson.words'), to: `/app/learn/${RESUME_LESSON}?course=${RESUME_COURSE}#assignment`, cta: fr ? 'Rédiger' : 'Write it' });
-  } else {
-    rest.push({ id: 'assignment', icon: 'checkCircle', tone: 'done', title: t('dash.assignmentDone'), meta: 'Exprimer son accord ou son désaccord' });
+  if (hasAssignment && !submissions[RESUME_LESSON]) {
+    urgent.push({ id: 'assignment', icon: 'edit', tone: 'urgent', title: t('dash.assignmentDue'), meta: resumeTitle + ' · ≥ 10 ' + t('lesson.words'), to: `/app/learn/${RESUME_LESSON}?course=${RESUME_COURSE}#assignment`, cta: fr ? 'Rédiger' : 'Write it' });
+  } else if (hasAssignment) {
+    rest.push({ id: 'assignment', icon: 'checkCircle', tone: 'done', title: t('dash.assignmentDone'), meta: resumeTitle });
   }
 
   if (learner.credits < 1) urgent.push({ id: 'credits', icon: 'card', tone: 'urgent', title: t('dash.noCredits'), meta: fr ? 'Les séances privées nécessitent un crédit.' : 'Private sessions need one credit each.', to: '/app/billing', cta: t('book.getCredits') });
@@ -86,6 +96,8 @@ function buildPlan(store: AppStore, lang: 'en' | 'fr', t: ReturnType<typeof useI
     urgent.push({ id: 'catch-up', icon: 'clock', tone: 'urgent', title: fr ? 'Rattraper la classe manquée' : 'Catch up on the class you missed', meta: `${lastMissed.topic} · ${fr ? 'pas d’enregistrement, séance individuelle' : 'no recording, private session'}`, to: `/app/book?purpose=catch-up&session=${lastMissed.id}&tutor=${group.tutorId}`, cta: fr ? 'Réserver' : 'Book' });
   if (sessionCost(store.bookings, learner.id, 'conversation').freeIntro)
     rest.unshift({ id: 'free-intro', icon: 'mic', title: fr ? 'Votre conversation individuelle offerte' : 'Your free one-on-one conversation', meta: fr ? 'Avec un tuteur, en français, avec corrections en direct' : 'With a tutor, in French, with live corrections', to: '/app/book?purpose=conversation', cta: fr ? 'Réserver' : 'Book' });
+  if (review.deck.length)
+    rest.unshift({ id: 'review', icon: 'words', title: fr ? `Révision du jour : ${review.deck.length} mot${review.deck.length > 1 ? 's' : ''}` : `Today’s review: ${review.deck.length} word${review.deck.length > 1 ? 's' : ''}`, meta: fr ? `~${Math.max(2, Math.round(review.deck.length / 3))} min · série de ${review.streak} jour(s)` : `~${Math.max(2, Math.round(review.deck.length / 3))} min · ${review.streak}-day streak`, to: '/app/vocabulary?mode=review', cta: fr ? 'Réviser' : 'Review' });
   if (!store.content.placements.some((pl) => pl.learnerId === learner.id))
     rest.unshift({ id: 'placement', icon: 'award', title: fr ? 'Passer le test de positionnement' : 'Take the placement test', meta: fr ? '15 min · votre niveau et un programme personnel' : '15 min · your level and a personal plan', to: '/app/placement', cta: fr ? 'Commencer' : 'Start' });
 
@@ -117,6 +129,7 @@ export function DashboardPage() {
   const fr = lang === 'fr';
   const store = useStore();
   const { learner, bookings, milestones, submissions, completedScenarios } = store;
+  const { RESUME_LESSON, RESUME_COURSE, hasAssignment } = pickResume(store);
   const upcoming = bookings
     .filter((b) => b.learnerId === learner.id && b.status === 'confirmed' && isUpcoming(b.start))
     .sort((a, b) => a.start.localeCompare(b.start));
@@ -176,7 +189,7 @@ export function DashboardPage() {
         };
       });
     if (key === todayKey) {
-      if (!submissions[RESUME_LESSON]) list.push({ id: 'hw', icon: 'edit', tone: 'gold', title: fr ? 'Devoir écrit à rendre' : 'Writing assignment due', meta: fr ? 'Répondre poliment à un collègue · 4–6 phrases' : 'Reply politely to a colleague · 4–6 sentences', to: `/app/learn/${RESUME_LESSON}?course=${RESUME_COURSE}#assignment` });
+      if (hasAssignment && !submissions[RESUME_LESSON]) list.push({ id: 'hw', icon: 'edit', tone: 'gold', title: fr ? 'Devoir écrit à rendre' : 'Writing assignment due', meta: fr ? 'Répondre poliment à un collègue · 4–6 phrases' : 'Reply politely to a colleague · 4–6 sentences', to: `/app/learn/${RESUME_LESSON}?course=${RESUME_COURSE}#assignment` });
       if (!completedScenarios.includes('sc-meeting')) list.push({ id: 'studio', icon: 'mic', tone: 'sky', title: 'Speaking Studio', meta: fr ? 'Jeu de rôle : une réunion de travail' : 'Role-play: a business meeting', to: '/app/studio?scenario=sc-meeting' });
       list.push({ id: 'vocab', icon: 'words', tone: 'green', title: fr ? 'Sprint de vocabulaire' : 'Vocabulary sprint', meta: fr ? 'Expressions pour la réunion' : 'Meeting expressions', to: '/app/vocabulary' });
     }

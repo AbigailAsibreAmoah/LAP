@@ -5554,3 +5554,15 @@ button.person {
 @media (max-width: 1200px) and (min-width: 901px) {
   .stairs { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
+
+/* Sidebar: no visible scrollbar track; the collapsed rail shows navigation only. */
+.sidebar { scrollbar-width: thin; scrollbar-color: transparent transparent; }
+.sidebar:hover { scrollbar-color: rgba(20, 27, 52, 0.18) transparent; }
+.sidebar::-webkit-scrollbar { width: 6px; }
+.sidebar::-webkit-scrollbar-track { background: transparent; }
+.sidebar::-webkit-scrollbar-thumb { border-radius: 6px; background: transparent; }
+.sidebar:hover::-webkit-scrollbar-thumb { background: rgba(20, 27, 52, 0.18); }
+.app-shell[data-collapsed] .sidebar { scrollbar-width: none; }
+.app-shell[data-collapsed] .sidebar::-webkit-scrollbar { display: none; }
+.app-shell[data-collapsed] .side-classmates { display: none; }
+.app-shell[data-collapsed] .side-link { position: relative; }

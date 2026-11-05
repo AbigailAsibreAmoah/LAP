@@ -4,6 +4,9 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { spring } from '../../components/animations/motion';
 import { useI18n } from '../../i18n/I18nProvider';
 import { speakFrench } from '../../utils/speech';
+import { Confetti } from './KidGamesMore';
+
+export { Confetti, LearnWords, SpeakGame } from './KidGamesMore';
 
 /*
  * La Porte Kids mini-games. Original designs in La Porte's colours: answers are marked A–D on
@@ -71,8 +74,12 @@ function EndCard({ score, total, points, onAgain, onDone }: { score: number; tot
   const fr = lang === 'fr';
   const stars = starsFor(score, total);
   const cheer = stars === 3 ? 'Bravo, champion !' : stars === 2 ? 'Très bien !' : 'Bien essayé !';
+  useEffect(() => {
+    say(cheer);
+  }, [cheer]);
   return (
     <motion.div className="kg-end" initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={spring.bouncy}>
+      {stars === 3 && <Confetti />}
       <div className="kg-end-burst" aria-hidden>🎉</div>
       <h3 lang="fr">{cheer}</h3>
       <Stars n={stars} size={40} />
@@ -113,6 +120,7 @@ export function QuizGame({ unit, onFinish, onExit }: { unit: KidUnit; onFinish: 
     const correct = choice === q.answer;
     const p = answerPoints(correct, elapsed, SEC * 1000, streak);
     setPicked(choice);
+    if (q.say) say(q.say);
     setGain(p);
     setPoints((n) => n + p);
     setStreak((s) => (correct ? s + 1 : 0));

@@ -1,4 +1,4 @@
-import { DAILY_LIMITS, DEMO_GAME_CODE, EXTERNAL_PROVIDERS, KID_GAME_INFO, KID_GAMES, KID_UNITS, kidProgress, minutesToday, nowIso, type CefrLevel, type KidGame, type KidProfile, type KidUnit, type LiveGameView, type PortraitSpec } from '@laporte/shared';
+import { DAILY_LIMITS, DEMO_GAME_CODE, EXTERNAL_PROVIDERS, gameOn, KID_GAME_INFO, KID_GAMES, KID_UNITS, kidProgress, minutesToday, nowIso, type CefrLevel, type KidGame, type KidProfile, type KidUnit, type LiveGameView, type PortraitSpec } from '@laporte/shared';
 import { AnimatePresence, motion } from 'motion/react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
@@ -7,8 +7,9 @@ import { spring } from '../../components/animations/motion';
 import { Icon } from '../../components/ui/Icon';
 import { Modal } from '../../components/ui/Overlay';
 import { useToast } from '../../components/ui/Toasts';
-import { BuilderGame, ListenGame, LivePlayerView, MemoryGame, QuizGame, Stars } from '../../features/kids/KidGames';
+import { BuilderGame, LearnWords, ListenGame, LivePlayerView, MemoryGame, QuizGame, SpeakGame, Stars } from '../../features/kids/KidGames';
 import { isLocalGame, liveClient } from '../../features/kids/liveClient';
+import { StoryTime } from '../../features/kids/StoryTime';
 import { useI18n } from '../../i18n/I18nProvider';
 import { useStore } from '../../state/AppStore';
 import { formatDate } from '../../utils/format';
@@ -197,7 +198,7 @@ function KidOverview({ kid }: { kid: KidProfile }) {
           <ul className="kid-recent">
             {p.recent.slice(0, 5).map((a) => {
               const u = KID_UNITS.find((x) => x.id === a.unitId)!;
-              return <li key={a.id}><span aria-hidden>{a.game === 'live' ? '📡' : KID_GAME_INFO[a.game].icon}</span> <span lang="fr">{a.game === 'live' ? (fr ? 'Jeu en direct' : 'Live game') : l(KID_GAME_INFO[a.game].name)} · {l(u.title)}</span> <Stars n={a.stars} size={12} /> <span className="tiny muted">{formatDate(a.at, lang, { day: 'numeric', month: 'short' })}</span></li>;
+              return <li key={a.id}><span aria-hidden>{a.game === 'live' ? '📡' : a.game === 'story' ? '📚' : KID_GAME_INFO[a.game].icon}</span> <span lang="fr">{a.game === 'live' ? (fr ? 'Jeu en direct' : 'Live game') : a.game === 'story' ? (fr ? 'Histoire' : 'Story') : l(KID_GAME_INFO[a.game].name)} · {l(u.title)}</span> <Stars n={a.stars} size={12} /> <span className="tiny muted">{formatDate(a.at, lang, { day: 'numeric', month: 'short' })}</span></li>;
             })}
           </ul>
         )}
@@ -227,7 +228,7 @@ function KidSettingsCard({ kid }: { kid: KidProfile }) {
         <span className="label">{fr ? 'Jeux' : 'Games'}</span>
         <div className="stack" style={{ ['--gap' as string]: '6px', marginTop: 6 }}>
           {KID_GAMES.map((g) => (
-            <label key={g} className="kid-toggle"><span>{KID_GAME_INFO[g].icon} {l(KID_GAME_INFO[g].name)}</span><input type="checkbox" role="switch" checked={kid.settings.games[g]} onChange={(e) => void set({ games: { [g]: e.target.checked } as Record<KidGame, boolean> })} /></label>
+            <label key={g} className="kid-toggle"><span>{KID_GAME_INFO[g].icon} {l(KID_GAME_INFO[g].name)}</span><input type="checkbox" role="switch" checked={gameOn(kid, g)} onChange={(e) => void set({ games: { [g]: e.target.checked } as Record<KidGame, boolean> })} /></label>
           ))}
           <label className="kid-toggle"><span>📡 {fr ? 'Jeux en direct avec un tuteur' : 'Live games with a tutor'}</span><input type="checkbox" role="switch" checked={kid.settings.liveGames} onChange={(e) => void set({ liveGames: e.target.checked })} /></label>
           <label className="kid-toggle"><span>🔗 {fr ? 'Jeux externes (Kahoot!, Quizlet, Wordwall, Blooket)' : 'Outside games (Kahoot!, Quizlet, Wordwall, Blooket)'}</span><input type="checkbox" role="switch" checked={kid.settings.externalGames} onChange={(e) => void set({ externalGames: e.target.checked })} /></label>
@@ -289,7 +290,7 @@ export function KidModePage() {
   const used = minutesToday(kid, today);
   const timeUp = used >= kid.settings.dailyMinutes;
   const progress = kidProgress(content, kid.id);
-  const finish = (unit: KidUnit, game: KidGame | 'live') => (score: number, total: number) =>
+  const finish = (unit: KidUnit, game: KidGame | 'live' | 'story') => (score: number, total: number) =>
     void actions.kids.record({ kidId: kid.id, unitId: unit.id, game, score, total }).catch((e) => toast(errText(e)));
 
   return (
@@ -333,7 +334,7 @@ export function KidModePage() {
                         <span className="kid-world-big" aria-hidden>{u.unlocked ? u.unit.emoji : '🔒'}</span>
                         <strong lang="fr">{u.unit.title.fr}</strong>
                         {!fr && <span className="tiny muted">{u.unit.title.en}</span>}
-                        <span className="tiny">{u.unlocked ? `${u.stars}/12 ★` : fr ? 'Joue au monde d’avant pour l’ouvrir' : 'Play the world before to open it'}</span>
+                        <span className="tiny">{u.unlocked ? `${u.stars}/${KID_GAMES.length * 3} ★` : fr ? 'Joue au monde d’avant pour l’ouvrir' : 'Play the world before to open it'}</span>
                         {u.badge && <span className="kid-world-badge" aria-label="badge">🏅</span>}
                       </motion.button>
                     ))}
@@ -344,6 +345,7 @@ export function KidModePage() {
               {screen.kind === 'world' && (
                 <WorldScreen kid={kid} unit={screen.unit} games={progress.units.find((u) => u.unit.id === screen.unit.id)!.games} onPlay={(game) => setScreen({ kind: 'play', unit: screen.unit, game })}
                   onExternal={(url) => setGate({ reason: 'external', url })}
+                  onStory={finish(screen.unit, 'story')}
                   onPractice={() => { const r = liveClient.practice(user, screen.unit.id, kid.id, kid.nickname); setScreen({ kind: 'live', code: r.view.code, playerId: r.playerId, unitId: screen.unit.id, practice: true }); }} />
               )}
 
@@ -354,6 +356,7 @@ export function KidModePage() {
                   {screen.game === 'memory' && <MemoryGame unit={screen.unit} onFinish={finish(screen.unit, 'memory')} onExit={() => setScreen({ kind: 'world', unit: screen.unit })} />}
                   {screen.game === 'builder' && <BuilderGame unit={screen.unit} onFinish={finish(screen.unit, 'builder')} onExit={() => setScreen({ kind: 'world', unit: screen.unit })} />}
                   {screen.game === 'listen' && <ListenGame unit={screen.unit} onFinish={finish(screen.unit, 'listen')} onExit={() => setScreen({ kind: 'world', unit: screen.unit })} />}
+                  {screen.game === 'speak' && <SpeakGame unit={screen.unit} onFinish={finish(screen.unit, 'speak')} onExit={() => setScreen({ kind: 'world', unit: screen.unit })} />}
                 </section>
               )}
 
@@ -378,7 +381,7 @@ export function KidModePage() {
   );
 }
 
-function WorldScreen({ kid, unit, games, onPlay, onExternal, onPractice }: { kid: KidProfile; unit: KidUnit; games: Record<KidGame, number>; onPlay: (g: KidGame) => void; onExternal: (url: string) => void; onPractice: () => void }) {
+function WorldScreen({ kid, unit, games, onPlay, onExternal, onPractice, onStory }: { kid: KidProfile; unit: KidUnit; games: Record<KidGame, number>; onPlay: (g: KidGame) => void; onExternal: (url: string) => void; onPractice: () => void; onStory: (score: number, total: number) => void }) {
   const { l, lang } = useI18n();
   const fr = lang === 'fr';
   const { content } = useStore();
@@ -390,11 +393,12 @@ function WorldScreen({ kid, unit, games, onPlay, onExternal, onPractice }: { kid
         <div>
           <h1 className="kid-hello" lang="fr">{unit.title.fr}</h1>
           {!fr && <p className="tiny muted" style={{ margin: 0 }}>{unit.title.en}</p>}
-          <p className="kid-words" lang="fr">{unit.words.map((x) => `${x.emoji} ${x.fr}`).join('  ·  ')}</p>
         </div>
       </section>
+      <LearnWords unit={unit} />
+      <StoryTime unit={unit} onFinish={onStory} />
       <section className="kid-games" aria-label={fr ? 'Jeux' : 'Games'}>
-        {KID_GAMES.filter((g) => kid.settings.games[g]).map((g) => (
+        {KID_GAMES.filter((g) => gameOn(kid, g)).map((g) => (
           <motion.button key={g} type="button" className="kid-game" whileHover={{ y: -4 }} whileTap={{ scale: 0.97 }} onClick={() => onPlay(g)}>
             <span className="kid-game-icon" aria-hidden>{KID_GAME_INFO[g].icon}</span>
             <strong lang="fr">{l(KID_GAME_INFO[g].name)}</strong>

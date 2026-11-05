@@ -4,11 +4,11 @@ import {
   findContactDetails,
   OPENING_VIDEO_MAX_SECONDS,
   OPENING_VIDEO_MIN_SECONDS,
-  PLACEMENT_QUESTIONS,
   seedContent,
   visibleContent,
 } from '@laporte/shared';
 import request from 'supertest';
+import { right, takePlacement } from './placementHelper';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { createApp } from '../src/app';
 import { bookingRepository } from '../src/repositories/bookingRepository';
@@ -194,8 +194,7 @@ describe('messaging safety', () => {
 
 describe('placement and rewards', () => {
   it('scores the placement on the server and sets the provisional level', async () => {
-    const answers = Object.fromEntries(PLACEMENT_QUESTIONS.map((q) => [q.id, q.answer]));
-    const res = await request(app).post('/api/me/placement').send({ answers, writingSample: 'Je travaille à Accra dans une banque et je voudrais parler français avec nos partenaires de Lomé et de Dakar.', goals: ['meetings', 'negotiations'], hoursPerWeek: 4, preferredTimes: ['evening'] });
+    const res = await takePlacement(app, right);
     expect(res.status).toBe(201);
     expect(res.body.result.level).toBe('C2');
     expect(res.body.result.plan.courseIds).toContain('crs-business');

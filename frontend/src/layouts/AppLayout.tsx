@@ -1,7 +1,7 @@
 import { classmatesOf, COURSES, leaderboard, LEARNERS, TUTORS, type Role } from '@laporte/shared';
 import { motion } from 'motion/react';
 import { useEffect, useId, useMemo, useState } from 'react';
-import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom';
+import { Link, Navigate, NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { Avatar } from '../components/3d/Portrait';
 import { spring } from '../components/animations/motion';
 import { LogoMark } from '../components/layout/Brand';
@@ -10,7 +10,8 @@ import { Icon, type IconName } from '../components/ui/Icon';
 import { useRouteFocus } from '../hooks/useRouteFocus';
 import { ClassmateChat } from '../features/community/ClassmateChat';
 import { useUnread } from '../features/messages/unread';
-import { readLocal, writeLocal } from '../utils/storage';
+import { readLocal, removeLocal, writeLocal } from '../utils/storage';
+import { START_PENDING_KEY } from '../pages/onboarding/StartPage';
 import { useI18n } from '../i18n/I18nProvider';
 import type { MessageKey } from '../i18n/dictionary';
 import { useStore } from '../state/AppStore';
@@ -90,6 +91,13 @@ export function AppLayout({ role }: { role: Role }) {
 
   useRouteFocus('app-main');
 
+  // A learner who signed up but hasn't chosen a starting level goes back to the start screen.
+  const hasPlacement = store.content.placements.some((p) => p.learnerId === store.learner.id);
+  const startPending = role === 'learner' && readLocal(START_PENDING_KEY) === '1';
+  useEffect(() => {
+    if (startPending && hasPlacement) removeLocal(START_PENDING_KEY);
+  }, [startPending, hasPlacement]);
+
   const groups = NAV[role];
   const mobileItems = groups.flatMap((g) => g.items).filter((i) => i.mobile);
   const unread = store.notifications.filter((n) => !n.read).length;
@@ -102,6 +110,7 @@ export function AppLayout({ role }: { role: Role }) {
       return !v;
     });
 
+  if (startPending && !hasPlacement) return <Navigate to="/start" replace />;
   return (
     <div className="app-shell" data-collapsed={collapsed || undefined}>
       <a href="#app-main" className="skip-link">
@@ -219,7 +228,7 @@ function ClassmateList() {
   ].filter((s) => s.people.length);
   let n = 0;
   return (
-    <div>
+    <div className="side-classmates">
       <ClassmateChat classmateId={chatWith} onClose={() => setChatWith(null)} />
       <div className="side-group">{lang === 'fr' ? 'Camarades de classe' : 'Classmates'}</div>
       {sections.map((s) => (
@@ -327,7 +336,7 @@ function SearchBox() {
 }
 
 function UserAvatar({ role }: { role: Role }) {
-  const { learner } = useStore();
+  const { learner, actions } = useStore();
   const name = role === 'learner' ? learner.firstName : role === 'instructor' ? TUTORS[0].name.split(' ')[0] : 'Admin';
   const { lang } = useI18n();
   const [open, setOpen] = useState(false);
@@ -351,6 +360,10 @@ function UserAvatar({ role }: { role: Role }) {
             <button type="button" role="menuitem" className="profile-opt" onClick={() => { setOpen(false); navigate('/app/kids'); }}>
               <span className="kids-tile" aria-hidden>★</span>
               <span><strong>{fr ? 'Profils enfants' : 'Kids profiles'}</strong><span className="tiny muted">{fr ? 'Gérés par vous · sécurisés' : 'Parent-managed · child-safe'}</span></span>
+            </button>
+            <button type="button" role="menuitem" className="profile-opt" onClick={() => { setOpen(false); actions.useDemoLearner(); navigate('/login'); }}>
+              <span className="kids-tile" aria-hidden><Icon name="logout" size={16} /></span>
+              <span><strong>{fr ? 'Se déconnecter' : 'Log out'}</strong><span className="tiny muted">{learner.email ?? ''}</span></span>
             </button>
           </div>
         )}

@@ -120,9 +120,13 @@ export const assignPackSchema = z.object({
 });
 
 export const responseSchema = z.object({ response: z.string().trim().min(1).max(5000) });
+const areaId = z.enum(['conversational', 'business', 'diplomacy', 'policy', 'entrepreneurship', 'everyday', 'academic', 'exams']);
+export const registerSchema = z.object({ name: z.string().trim().min(2).max(80), email: z.string().trim().email().max(160), areaId });
+export const loginSchema = z.object({ email: z.string().trim().email().max(160) });
 export const shareSchema = z.object({ share: z.boolean() });
+export const reviewSchema = z.object({ grade: z.enum(['again', 'hard', 'good', 'easy']) });
 export const reportSchema = z.object({ threadId: z.string().min(1), messageId: z.string().min(1), excerpt: z.string().max(2000), authorId: z.string().min(1), reason: z.enum(['contact', 'inappropriate', 'spam', 'other']), note: z.string().max(500).optional() });
-const kidGame = z.enum(['quiz', 'memory', 'builder', 'listen', 'live']);
+const kidGame = z.enum(['quiz', 'memory', 'builder', 'listen', 'speak', 'live', 'story']);
 export const kidCreateSchema = z.object({ name: z.string().trim().min(2).max(30), age: z.number().int().min(4).max(15), level: z.enum(['A1', 'A2']), avatar: z.number().int().min(0).max(7), pin: z.string().regex(/^\d{4}$/) });
 export const kidUpdateSchema = z.object({
   name: z.string().trim().min(2).max(30).optional(),
@@ -146,6 +150,7 @@ export const completeLessonSchema = z.object({
 export const claimQuestSchema = z.object({ questId: z.enum(['streak-5', 'quiz-ace-3', 'lessons-2', 'practice-1']) });
 
 export const placementSchema = z.object({
+  attemptId: z.string().min(1).optional(),
   answers: z.record(z.string(), z.number().int().min(0)),
   writingSample: z.string().trim().max(3000),
   goals: z.array(z.enum(['meetings', 'negotiations', 'presentations', 'interviews', 'diplomacy', 'travel', 'everyday', 'exams'])).max(8),

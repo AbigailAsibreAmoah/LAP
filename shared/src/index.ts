@@ -5,3 +5,8 @@ export * from './policies';
 export * from './content';
 export * from './community';
 export * from './kids';
+export * from './access';
+export * from './review';
+export * from './speechScore';
+export * from './kidStories';
+export * from './accounts';

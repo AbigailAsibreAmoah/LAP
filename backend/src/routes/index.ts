@@ -15,6 +15,8 @@ import { contentController, upload } from '../controllers/contentController';
 import { communityService, contentService } from '../services/contentService';
 import { classmateMessaging } from '../services/engagementService';
 import { kidsService, liveGameService } from '../services/kidsService';
+import { placementService } from '../services/placementService';
+import { authService } from '../services/authService';
 import {
   addVocabularySchema,
   assignPackSchema,
@@ -40,6 +42,9 @@ import {
   rescheduleBookingSchema,
   responseSchema,
   shareSchema,
+  registerSchema,
+  loginSchema,
+  reviewSchema,
   reportSchema,
   resolveReportSchema,
   kidCreateSchema,
@@ -125,6 +130,10 @@ api.post('/content/assignments', staff, validateBody(assignPackSchema), contentC
 api.post('/content/assignments/:id/submit', requireRole('learner'), validateBody(responseSchema), contentController.submitAssignment);
 api.post('/content/assignments/:id/review', staff, validateBody(feedbackSchema), contentController.reviewAssignment);
 api.post('/me/quests/claim', requireRole('learner'), validateBody(claimQuestSchema), contentController.claimQuest);
+/* Demo accounts (no passwords in the prototype). */
+api.post('/auth/register', validateBody(registerSchema), (req, res) => res.status(201).json(authService.register(req.body)));
+api.post('/auth/login', validateBody(loginSchema), (req, res) => res.json(authService.login(req.body.email)));
+api.post('/me/placement/attempt', requireRole('learner'), (req, res) => res.status(201).json(placementService.start(req.demoUser)));
 api.post('/me/placement', requireRole('learner'), validateBody(placementSchema), contentController.placement);
 
 // Community: groups (5 learners maximum), classmates, leaderboard, rewards
@@ -153,6 +162,7 @@ api.get('/games/:code', (req, res) => res.json(liveGameService.view(req.demoUser
 api.post('/games/:code/join', requireRole('learner'), validateBody(liveJoinSchema), (req, res) => res.json(liveGameService.join(req.demoUser, req.params.code, req.body.kidId)));
 api.post('/games/:code/advance', staff, (req, res) => res.json(liveGameService.advance(req.demoUser, req.params.code)));
 api.post('/games/:code/answer', requireRole('learner'), validateBody(liveAnswerSchema), (req, res) => res.json(liveGameService.answer(req.demoUser, req.params.code, req.body.playerId, req.body.index, req.body.choice)));
+api.post('/me/vocabulary/:id/review', requireRole('learner'), validateBody(reviewSchema), (req, res) => res.json(contentService.reviewWord(req.demoUser, req.params.id, req.body.grade)));
 api.post('/reports', validateBody(reportSchema), (req, res) => res.status(201).json(contentService.reportMessage(req.demoUser, req.body)));
 api.post('/admin/reports/:id/resolve', requireRole('admin'), validateBody(resolveReportSchema), (req, res) => res.json(contentService.resolveReport(req.demoUser, req.params.id, req.body.outcome)));
 api.post('/threads', requireRole('learner'), validateBody(startThreadSchema), (req, res) => res.status(201).json(classmateMessaging.start(req.demoUser.id, req.body.participantId, req.body.body)));

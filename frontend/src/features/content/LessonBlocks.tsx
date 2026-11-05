@@ -1,4 +1,4 @@
-import { ACCENTS, BLOCK_LABEL, COURSES, TUTORS, type Block, type LessonDoc, type MediaAsset, type QuizQuestion } from '@laporte/shared';
+import { ACCENTS, BLOCK_LABEL, COURSES, TUTORS, type Block, type LessonDoc, type MediaAsset, type QuizQuestion, scorePronunciation, type PronunciationScore } from '@laporte/shared';
 import { AnimatePresence, motion } from 'motion/react';
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
@@ -9,6 +9,7 @@ import { TypedOnlyTextarea } from '../../components/ui/TypedOnly';
 import { useI18n } from '../../i18n/I18nProvider';
 import { useStore } from '../../state/AppStore';
 import { formatClip } from '../../utils/format';
+import { recogniseFrench, RecognitionError } from '../../utils/recognition';
 import { speakFrench } from '../../utils/speech';
 
 export const BLOCK_ICON: Record<Block['type'], IconName> = {
@@ -202,6 +203,18 @@ function PronounceItem({ item, asset }: { item: { fr: string; tip: { en: string;
   const rec = useRef<MediaRecorder | null>(null);
   const [micError, setMicError] = useState(false);
   useEffect(() => () => { if (take) URL.revokeObjectURL(take); }, [take]);
+  // Automatic check: the browser's French recogniser transcribes the attempt and each word is scored.
+  const [checking, setChecking] = useState(false);
+  const [check, setCheck] = useState<PronunciationScore | null>(null);
+  const [checkError, setCheckError] = useState<string | null>(null);
+  const runCheck = () => {
+    setCheckError(null);
+    setChecking(true);
+    recogniseFrench({ maxSeconds: 8 })
+      .promise.then((h) => setCheck(scorePronunciation(item.fr.replace(/_/g, ' '), h.transcripts, h.confidence)))
+      .catch((e: unknown) => setCheckError(e instanceof RecognitionError && e.code === 'unsupported' ? (fr ? 'La vérification automatique fonctionne dans Chrome ou Edge. Enregistrez-vous et réécoutez.' : 'Automatic checking works in Chrome or Edge. Record yourself and listen back instead.') : e instanceof RecognitionError && e.code === 'denied' ? (fr ? 'Autorisez le micro pour vérifier votre prononciation.' : 'Allow the microphone to check your pronunciation.') : fr ? 'Rien entendu : réessayez un peu plus près du micro.' : 'Nothing heard: try again a little closer to the mic.'))
+      .finally(() => setChecking(false));
+  };
 
   const listen = () => {
     if (asset?.url) {
@@ -244,11 +257,20 @@ function PronounceItem({ item, asset }: { item: { fr: string; tip: { en: string;
       <div style={{ minWidth: 0, flex: 1 }}>
         <div className="pron-text" lang="fr">{item.fr.split('_').map((part, i, arr) => <span key={i}>{part}{i < arr.length - 1 && <span className="liaison" aria-hidden>‿</span>}</span>)}</div>
         <div className="tiny muted">{l(item.tip)}</div>
+        {check && (
+          <div className="pron-check" aria-live="polite">
+            <span className="pron-score" data-band={check.score >= 90 ? 'great' : check.score >= 70 ? 'good' : check.score >= 45 ? 'almost' : 'low'}>{check.score}%</span>
+            <span lang="fr">{check.words.map((w, i) => <span key={i} className="pron-word" data-ok={w.ok || undefined}>{w.word} </span>)}</span>
+            <span className="tiny muted" style={{ display: 'block' }}>{l(check.label)}{check.heard ? ` · ${fr ? 'compris' : 'heard'} : « ${check.heard} »` : ''}</span>
+          </div>
+        )}
+        {checkError && <div className="tiny" style={{ color: 'var(--burgundy)' }}>{checkError}</div>}
         {micError && <div className="tiny" style={{ color: 'var(--burgundy)' }}>{fr ? 'Micro indisponible : autorisez-le dans votre navigateur.' : 'Microphone unavailable: allow it in your browser.'}</div>}
       </div>
       <div className="row" style={{ ['--gap' as string]: '6px', flexWrap: 'nowrap' }}>
         <button type="button" className="icon-btn" onClick={listen} disabled={state !== 'idle'} aria-label={fr ? 'Écouter le modèle' : 'Hear the model'}><Icon name="headphones" size={16} /></button>
         <button type="button" className={`icon-btn${state === 'recording' ? ' is-recording' : ''}`} onClick={record} aria-label={state === 'recording' ? (fr ? 'Arrêter' : 'Stop recording') : fr ? 'M’enregistrer' : 'Record yourself'} aria-pressed={state === 'recording'}><Icon name="mic" size={16} /></button>
+        <button type="button" className={`btn btn-secondary btn-sm${checking ? ' is-recording' : ''}`} onClick={runCheck} disabled={checking || state !== 'idle'} aria-label={fr ? 'Vérifier ma prononciation' : 'Check my pronunciation'}><Icon name="mic" size={14} /> {checking ? (fr ? 'J’écoute…' : 'Listening…') : fr ? 'Vérifier' : 'Check'}</button>
         {take && <button type="button" className="icon-btn" onClick={() => void new Audio(take).play()} aria-label={fr ? 'Réécouter mon essai' : 'Play my attempt'}><Icon name="play" size={14} /></button>}
       </div>
     </li>

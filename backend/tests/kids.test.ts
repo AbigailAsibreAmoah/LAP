@@ -37,7 +37,7 @@ describe('kids profiles', () => {
   it('opens a world after two games in the one before', () => {
     const s = seedContent();
     const p = kidProgress(s, 'kid-kwame');
-    expect(p.units.map((u) => u.unlocked)).toEqual([true, true, false, false, false, false]);
+    expect(p.units.map((u) => u.unlocked)).toEqual([true, true, false, false, false, false, false, false, false, false]);
     expect(p.totalStars).toBe(7);
   });
 

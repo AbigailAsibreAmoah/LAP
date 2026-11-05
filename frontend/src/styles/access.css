@@ -1,0 +1,42 @@
+/* ---------- Level access: banner, locks, placement score ---------- */
+.level-banner { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; padding: 14px 16px; border: 1px solid var(--line, #ece4d8); border-radius: 16px; background: #fff; }
+.level-banner-badge { flex: none; width: 52px; height: 52px; font-size: 20px; }
+.level-lock { display: inline-flex; align-items: center; gap: 4px; min-height: 22px; padding: 0 8px; background: #f3e1e5; color: #6e1630; font-size: 12px; font-weight: 700; }
+.course-locked-wrap { position: relative; }
+.course-locked-wrap > :first-child { filter: grayscale(0.55); opacity: 0.72; }
+.course-locked-wrap:hover > :first-child { opacity: 0.9; }
+.course-locked-tag { position: absolute; top: 12px; left: 12px; display: inline-flex; align-items: center; gap: 5px; padding: 4px 10px; border-radius: 999px; background: #141b34; color: #fff; font-size: 12px; font-weight: 700; pointer-events: none; }
+
+.placement-score { display: grid; gap: 12px; padding: 16px; border-radius: 16px; background: #faf6ef; }
+.placement-score-head { display: flex; align-items: baseline; gap: 10px; }
+.placement-score-head strong { font-size: 30px; color: #6e1630; }
+.placement-bands { display: grid; gap: 6px; }
+.placement-band { display: grid; grid-template-columns: 34px minmax(0, 1fr) 36px; align-items: center; gap: 10px; }
+.placement-band-level { font-weight: 800; color: #8a8f9c; }
+.placement-band[data-passed] .placement-band-level { color: #1f6b4f; }
+.placement-band[data-current] .placement-band-level { color: #6e1630; }
+.placement-band-bar { height: 10px; border-radius: 999px; background: #ece4d8; overflow: hidden; }
+.placement-band-bar span { display: block; height: 100%; border-radius: 999px; background: #c49a5a; }
+.placement-band[data-passed] .placement-band-bar span { background: #1f6b4f; }
+.placement-skip-note { margin: 0; padding: 12px 14px; border-radius: 12px; background: #fff3d6; }
+
+/* ---------- Start screen (after sign-up) ---------- */
+.start-screen { min-height: 100vh; background: radial-gradient(80% 60% at 85% 0%, #fff6e6 0%, var(--ivory, #f6f1ea) 60%); }
+.start-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; max-width: 980px; margin: 0 auto; padding: 18px 16px; }
+.start-main { max-width: 980px; margin: 0 auto; padding: 12px 16px 64px; }
+.start-title { margin: 8px 0 6px; font-size: clamp(2rem, 5vw, 3rem); }
+.start-main .placement { margin-top: 22px; }
+.start-choice { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+@media (max-width: 720px) { .start-choice { grid-template-columns: minmax(0, 1fr); } }
+.start-option { display: grid; gap: 8px; align-content: start; padding: 24px; border: 2px solid var(--line, #ece4d8); border-radius: 22px; background: #fff; text-align: left; color: var(--ink, #141b34); cursor: pointer; transition: border-color 0.2s, transform 0.2s; }
+.start-option:hover { border-color: #c49a5a; transform: translateY(-2px); }
+.start-option strong { font-size: 1.3rem; color: var(--navy, #141b34); }
+.start-option-main { border-color: #6e1630; background: linear-gradient(180deg, #fff 0%, #fbf1f3 100%); }
+.start-option-icon { display: grid; place-items: center; width: 52px; height: 52px; border-radius: 14px; background: #f3e1e5; color: #6e1630; }
+.start-option-cta { display: inline-flex; align-items: center; gap: 6px; margin-top: 6px; font-weight: 700; color: #6e1630; }
+
+/* ---------- Protected assessment (main styles are inline in ProtectedTest.tsx) ---------- */
+@media print {
+  .protected-test { visibility: hidden !important; }
+  .protected-test::before { content: 'The La Porte assessment cannot be printed.'; visibility: visible; }
+}

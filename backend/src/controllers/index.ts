@@ -1,3 +1,4 @@
+import { ownedBy } from '@laporte/shared';
 import type { Request, Response } from 'express';
 import { env } from '../config/env';
 import { bookingRepository } from '../repositories/bookingRepository';
@@ -48,8 +49,8 @@ export const learnerController = {
     res.json(learner);
   },
   milestones: (_req: Request, res: Response) => res.json(catalogRepository.milestones()),
-  vocabulary: (_req: Request, res: Response) => res.json(vocabularyRepository.all()),
-  addVocabulary: (req: Request, res: Response) => res.status(201).json(vocabularyService.add(req.body)),
+  vocabulary: (req: Request, res: Response) => res.json(vocabularyRepository.all().filter((v) => ownedBy(v, req.demoUser.id))),
+  addVocabulary: (req: Request, res: Response) => res.status(201).json(vocabularyService.add(req.body, req.demoUser.id)),
   toggleVocabulary: (req: Request, res: Response) => res.json(vocabularyService.toggle(req.params.id)),
   payments: (req: Request, res: Response) => res.json(paymentRepository.forLearner(req.demoUser.id)),
 };

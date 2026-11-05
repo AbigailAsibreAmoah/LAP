@@ -1,4 +1,4 @@
-import { ADMIN_METRICS, COURSE_AREAS, COURSES, LEARNERS, MEMBERSHIP_PLANS, REPORT_REASONS, TUTORS, type Learner } from '@laporte/shared';
+import { ADMIN_METRICS, COURSE_AREAS, COURSES, LEARNERS, MEMBERSHIP_PLANS, REPORT_REASONS, TUTORS, type Learner, productName } from '@laporte/shared';
 import { AnimatePresence, motion } from 'motion/react';
 import { useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
@@ -345,7 +345,7 @@ function PaymentsAdmin() {
                 <td className="tiny num">{p.reference}</td>
                 <td className="num">{formatDate(p.createdAt, lang, { day: 'numeric', month: 'short' })}</td>
                 <td>{LEARNERS.find((x) => x.id === p.learnerId)?.name}</td>
-                <td>{l(MEMBERSHIP_PLANS.find((x) => x.id === p.planId)!.name)}</td>
+                <td>{l(productName(p.planId))}</td>
                 <td>{p.provider}</td>
                 <td className="num" style={{ fontWeight: 600 }}>{formatGhs(p.amountGhs, lang)}</td>
                 <td><StatusBadge status={p.status}>{p.status}</StatusBadge></td>

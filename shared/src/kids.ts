@@ -2,6 +2,7 @@
 // Pure rules shared by the API and the offline demo, like the rest of the content model.
 import { SEED_SHIFT_DAYS, shiftDatesInPlace, shiftIso } from './clock';
 import { ContentError, type ContentState, type ContentUser } from './content';
+import { MORE_KID_UNITS } from './kidStories';
 import type { CefrLevel, Localized } from './types';
 
 const L = (en: string, fr: string): Localized => ({ en, fr });
@@ -12,7 +13,7 @@ const fail = (status: number, code: string, message: string): never => {
 
 /* ---------------- Profiles and parent settings ---------------- */
 
-export const KID_GAMES = ['quiz', 'memory', 'builder', 'listen'] as const;
+export const KID_GAMES = ['quiz', 'memory', 'builder', 'listen', 'speak'] as const;
 export type KidGame = (typeof KID_GAMES)[number];
 
 export const KID_GAME_INFO: Record<KidGame, { name: Localized; blurb: Localized; icon: string }> = {
@@ -20,6 +21,7 @@ export const KID_GAME_INFO: Record<KidGame, { name: Localized; blurb: Localized;
   memory: { name: L('Memory', 'Mémoire'), blurb: L('Find the pairs: picture and French word.', 'Trouve les paires : image et mot français.'), icon: '🃏' },
   builder: { name: L('Word builder', 'Mots en morceaux'), blurb: L('Put the letters in the right order.', 'Remets les lettres dans l’ordre.'), icon: '🧩' },
   listen: { name: L('Listen & pick', 'Écoute et choisis'), blurb: L('Hear the word, tap the right picture.', 'Écoute le mot, touche la bonne image.'), icon: '🎧' },
+  speak: { name: L('Say it!', 'Dis-le !'), blurb: L('Say the word out loud: the microphone listens.', 'Dis le mot à voix haute : le micro écoute.'), icon: '🎤' },
 };
 
 export const DAILY_LIMITS = [15, 30, 45, 60] as const;
@@ -54,14 +56,14 @@ export interface KidActivity {
   id: string;
   kidId: string;
   unitId: string;
-  game: KidGame | 'live';
+  game: KidGame | 'live' | 'story';
   score: number;
   total: number;
   stars: 0 | 1 | 2 | 3;
   at: string;
 }
 
-export const defaultKidSettings = (): KidSettings => ({ dailyMinutes: 30, games: { quiz: true, memory: true, builder: true, listen: true }, liveGames: true, externalGames: false });
+export const defaultKidSettings = (): KidSettings => ({ dailyMinutes: 30, games: { quiz: true, memory: true, builder: true, listen: true, speak: true }, liveGames: true, externalGames: false });
 
 /* ---------------- Safe nicknames ---------------- */
 
@@ -98,13 +100,14 @@ export interface KidUnit {
 const w = (fr: string, word: string, en: string, emoji: string): KidWord => ({ fr, word, en, emoji });
 
 export const KID_UNITS: KidUnit[] = [
-  { id: 'ku-bonjour', title: L('Hello!', 'Bonjour !'), emoji: '👋', colour: '#F8E3D6', words: [w('bonjour', 'bonjour', 'hello', '👋'), w('au revoir', 'revoir', 'goodbye', '🌙'), w('merci', 'merci', 'thank you', '🙏'), w('oui', 'oui', 'yes', '👍'), w('non', 'non', 'no', '👎'), w('s’il te plaît', 'plait', 'please', '✨')] },
-  { id: 'ku-couleurs', title: L('Colours', 'Les couleurs'), emoji: '🎨', colour: '#E3EEF8', words: [w('rouge', 'rouge', 'red', '🍎'), w('bleu', 'bleu', 'blue', '🌊'), w('vert', 'vert', 'green', '🌳'), w('jaune', 'jaune', 'yellow', '☀️'), w('orange', 'orange', 'orange', '🍊'), w('rose', 'rose', 'pink', '🌸')] },
-  { id: 'ku-nombres', title: L('Numbers', 'Les nombres'), emoji: '🔢', colour: '#FFF3D6', words: [w('un', 'un', 'one', '1️⃣'), w('deux', 'deux', 'two', '2️⃣'), w('trois', 'trois', 'three', '3️⃣'), w('quatre', 'quatre', 'four', '4️⃣'), w('cinq', 'cinq', 'five', '5️⃣'), w('six', 'six', 'six', '6️⃣')] },
-  { id: 'ku-animaux', title: L('Animals', 'Les animaux'), emoji: '🦁', colour: '#E2F0E7', words: [w('le chat', 'chat', 'the cat', '🐱'), w('le chien', 'chien', 'the dog', '🐶'), w('le lion', 'lion', 'the lion', '🦁'), w('l’oiseau', 'oiseau', 'the bird', '🐦'), w('le poisson', 'poisson', 'the fish', '🐟'), w('l’éléphant', 'elephant', 'the elephant', '🐘')] },
-  { id: 'ku-famille', title: L('Family', 'La famille'), emoji: '👨‍👩‍👧', colour: '#F3E1E5', words: [w('la mère', 'mere', 'the mother', '👩'), w('le père', 'pere', 'the father', '👨'), w('la sœur', 'soeur', 'the sister', '👧'), w('le frère', 'frere', 'the brother', '👦'), w('le bébé', 'bebe', 'the baby', '👶'), w('la grand-mère', 'mamie', 'the grandmother', '👵')] },
-  { id: 'ku-nourriture', title: L('Food', 'La nourriture'), emoji: '🍌', colour: '#FDEBD0', words: [w('la banane', 'banane', 'the banana', '🍌'), w('le pain', 'pain', 'the bread', '🍞'), w('le lait', 'lait', 'the milk', '🥛'), w('le riz', 'riz', 'the rice', '🍚'), w('l’eau', 'eau', 'the water', '💧'), w('le gâteau', 'gateau', 'the cake', '🍰')] },
+  { id: 'ku-bonjour', title: L('Hello!', 'Bonjour !'), emoji: '👋', colour: '#F8E3D6', words: [w('bonjour', 'bonjour', 'hello', '👋'), w('au revoir', 'revoir', 'goodbye', '🌙'), w('merci', 'merci', 'thank you', '🙏'), w('oui', 'oui', 'yes', '👍'), w('non', 'non', 'no', '👎'), w('s’il te plaît', 'plait', 'please', '✨'), w('bonne nuit', 'nuit', 'good night', '😴'), w('pardon', 'pardon', 'sorry', '🙇')] },
+  { id: 'ku-couleurs', title: L('Colours', 'Les couleurs'), emoji: '🎨', colour: '#E3EEF8', words: [w('rouge', 'rouge', 'red', '🍎'), w('bleu', 'bleu', 'blue', '🌊'), w('vert', 'vert', 'green', '🌳'), w('jaune', 'jaune', 'yellow', '☀️'), w('orange', 'orange', 'orange', '🍊'), w('rose', 'rose', 'pink', '🌸'), w('violet', 'violet', 'purple', '🍇'), w('blanc', 'blanc', 'white', '☁️')] },
+  { id: 'ku-nombres', title: L('Numbers', 'Les nombres'), emoji: '🔢', colour: '#FFF3D6', words: [w('un', 'un', 'one', '1️⃣'), w('deux', 'deux', 'two', '2️⃣'), w('trois', 'trois', 'three', '3️⃣'), w('quatre', 'quatre', 'four', '4️⃣'), w('cinq', 'cinq', 'five', '5️⃣'), w('six', 'six', 'six', '6️⃣'), w('sept', 'sept', 'seven', '7️⃣'), w('huit', 'huit', 'eight', '8️⃣')] },
+  { id: 'ku-animaux', title: L('Animals', 'Les animaux'), emoji: '🦁', colour: '#E2F0E7', words: [w('le chat', 'chat', 'the cat', '🐱'), w('le chien', 'chien', 'the dog', '🐶'), w('le lion', 'lion', 'the lion', '🦁'), w('l’oiseau', 'oiseau', 'the bird', '🐦'), w('le poisson', 'poisson', 'the fish', '🐟'), w('l’éléphant', 'elephant', 'the elephant', '🐘'), w('le singe', 'singe', 'the monkey', '🐒'), w('la tortue', 'tortue', 'the tortoise', '🐢')] },
+  { id: 'ku-famille', title: L('Family', 'La famille'), emoji: '👨‍👩‍👧', colour: '#F3E1E5', words: [w('la mère', 'mere', 'the mother', '👩'), w('le père', 'pere', 'the father', '👨'), w('la sœur', 'soeur', 'the sister', '👧'), w('le frère', 'frere', 'the brother', '👦'), w('le bébé', 'bebe', 'the baby', '👶'), w('la grand-mère', 'mamie', 'the grandmother', '👵'), w('le grand-père', 'papi', 'the grandfather', '👴'), w('la famille', 'famille', 'the family', '👨‍👩‍👧')] },
+  { id: 'ku-nourriture', title: L('Food', 'La nourriture'), emoji: '🍌', colour: '#FDEBD0', words: [w('la banane', 'banane', 'the banana', '🍌'), w('le pain', 'pain', 'the bread', '🍞'), w('le lait', 'lait', 'the milk', '🥛'), w('le riz', 'riz', 'the rice', '🍚'), w('l’eau', 'eau', 'the water', '💧'), w('le gâteau', 'gateau', 'the cake', '🍰'), w('la mangue', 'mangue', 'the mango', '🥭'), w('le poulet', 'poulet', 'the chicken', '🍗')] },
 ];
+KID_UNITS.push(...MORE_KID_UNITS);
 
 /** Deterministic shuffle so a game is the same on the server and in the browser for a given seed. */
 export function seededShuffle<T>(items: T[], seed: number): T[] {
@@ -189,6 +192,9 @@ export function kidProgress(state: Pick<ContentState, 'kidActivities'>, kidId: s
 
 export const minutesToday = (kid: KidProfile, today: string) => kid.usage[today] ?? 0;
 
+/** Games are on unless a parent switched them off (new games start on for existing profiles). */
+export const gameOn = (kid: Pick<KidProfile, 'settings'>, game: KidGame) => kid.settings.games[game] !== false;
+
 /* ---------------- Outside game platforms ---------------- */
 
 export const EXTERNAL_PROVIDERS = {
@@ -268,7 +274,7 @@ export const kidOps = {
     const next = structuredClone(state);
     const kid = ownKid(next, ctx, input.kidId);
     if (!KID_UNITS.some((u) => u.id === input.unitId)) fail(404, 'not_found', 'Unknown world');
-    if (input.game !== 'live' && !kid.settings.games[input.game]) fail(403, 'game_off', 'This game is switched off by a parent.');
+    if (input.game !== 'live' && input.game !== 'story' && !gameOn(kid, input.game)) fail(403, 'game_off', 'This game is switched off by a parent.');
     if (input.total < 1 || input.total > 20 || input.score < 0 || input.score > input.total) fail(422, 'invalid_score', 'Invalid score');
     const activity: KidActivity = { ...input, id: ctx.newId('ka'), stars: starsFor(input.score, input.total), at: ctx.now };
     next.kidActivities.push(activity);

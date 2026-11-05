@@ -1,6 +1,6 @@
 import { type Milestone } from '@laporte/shared';
 import { AnimatePresence, motion, useInView, useReducedMotion } from 'motion/react';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Avatar } from '../../components/3d/Portrait';
 import { ProgressRing, Token } from '../../components/3d/Depth';
 import { AnimatedBar } from '../../components/animations/Reveal';
@@ -20,7 +20,19 @@ const KIND_ICON: Record<string, IconName> = { video: 'video', reading: 'book', q
 export function PerformancePassport({ readOnly }: { readOnly?: boolean }) {
   const { t, l, lang } = useI18n();
   const toast = useToast();
-  const mobile = useIsMobile();
+  const isMobile = useIsMobile();
+  // The curved map needs room for its cards: use the stacked journey whenever the card itself is
+  // narrow (small screens, or when the sidebar is open), not only on phones.
+  const mapRef = useRef<HTMLDivElement>(null);
+  const [narrow, setNarrow] = useState(false);
+  useEffect(() => {
+    const el = mapRef.current;
+    if (!el || typeof ResizeObserver === 'undefined') return;
+    const ro = new ResizeObserver(([entry]) => setNarrow(entry.contentRect.width < 760));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+  const mobile = isMobile || narrow;
   const reduce = useReducedMotion();
   const { milestones, learner, actions } = useStore();
   const [open, setOpen] = useState<Milestone | null>(null);
@@ -73,7 +85,7 @@ export function PerformancePassport({ readOnly }: { readOnly?: boolean }) {
       </div>
 
       {/* Journey */}
-      <div className="card" style={{ ['--pad' as string]: mobile ? '20px' : '0', position: 'relative', overflow: 'hidden', background: 'linear-gradient(170deg, #FBF5EC 0%, #F3E7D6 55%, #EBDCC5 100%)', minHeight: mobile ? undefined : 520 }}>
+      <div ref={mapRef} className="card" style={{ ['--pad' as string]: mobile ? '20px' : '0', position: 'relative', overflow: 'hidden', background: 'linear-gradient(170deg, #FBF5EC 0%, #F3E7D6 55%, #EBDCC5 100%)', minHeight: mobile ? undefined : 520 }}>
         {mobile ? (
           <VerticalJourney milestones={milestones} onOpen={setOpen} statusLabel={statusLabel} celebrate={celebrate} />
         ) : (

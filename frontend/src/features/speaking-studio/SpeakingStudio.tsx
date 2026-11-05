@@ -1,4 +1,4 @@
-import { LEARNERS, SPEAKING_SCENARIOS, TUTORS, type SpeakingFeedback, type SpeakingScenario } from '@laporte/shared';
+import { assessSpokenResponse, LEARNERS, SPEAKING_SCENARIOS, TUTORS, type SpeakingFeedback, type SpeakingScenario } from '@laporte/shared';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Avatar } from '../../components/3d/Portrait';
@@ -10,6 +10,7 @@ import { Icon } from '../../components/ui/Icon';
 import { useToast } from '../../components/ui/Toasts';
 import { useI18n } from '../../i18n/I18nProvider';
 import { api } from '../../services/api';
+import { recogniseFrench, RecognitionError } from '../../utils/recognition';
 import { useStore } from '../../state/AppStore';
 
 type Phase = 'select' | 'prompt' | 'response' | 'feedback';
@@ -63,6 +64,12 @@ export function SpeakingStudio({ embedded, initialId }: { embedded?: boolean; in
   const [speaking, setSpeaking] = useState(false);
   const [result, setResult] = useState<{ transcript: string; feedback: SpeakingFeedback } | null>(null);
   const stopSpeech = useRef<() => void>();
+  // Answering out loud: transcribed by the browser's French recogniser and scored automatically.
+  const [listening, setListening] = useState(false);
+  const [mine, setMine] = useState(false);
+  const [micMsg, setMicMsg] = useState<string | null>(null);
+  const listener = useRef<ReturnType<typeof recogniseFrench> | null>(null);
+  useEffect(() => () => listener.current?.abort(), []);
 
   useEffect(() => () => stopSpeech.current?.(), []);
 
@@ -71,7 +78,28 @@ export function SpeakingStudio({ embedded, initialId }: { embedded?: boolean; in
     setSpeaking(false);
     setScenario(sc);
     setResult(null);
+    setMine(false);
+    setMicMsg(null);
     setPhase('prompt');
+  };
+
+  const answerAloud = () => {
+    if (listening) return listener.current?.stop();
+    stopSpeech.current?.();
+    setSpeaking(false);
+    setMicMsg(null);
+    const l2 = recogniseFrench({ long: true, maxSeconds: 60 });
+    listener.current = l2;
+    setListening(true);
+    l2.promise
+      .then((h) => {
+        const transcript = h.transcripts[0] ?? '';
+        setResult({ transcript, feedback: assessSpokenResponse(scenario, transcript, h.seconds, h.confidence) });
+        setMine(true);
+        setPhase('feedback');
+      })
+      .catch((e: unknown) => setMicMsg(e instanceof RecognitionError && e.code === 'unsupported' ? (lang === 'fr' ? 'La réponse à voix haute fonctionne dans Chrome ou Edge. Vous pouvez voir un exemple de réponse.' : 'Answering out loud works in Chrome or Edge. You can still see a model answer.') : e instanceof RecognitionError && e.code === 'denied' ? (lang === 'fr' ? 'Autorisez le micro dans votre navigateur.' : 'Allow the microphone in your browser.') : lang === 'fr' ? 'Rien entendu : réessayez.' : 'Nothing heard: try again.'))
+      .finally(() => setListening(false));
   };
 
   const play = (text: string) => {
@@ -199,14 +227,21 @@ export function SpeakingStudio({ embedded, initialId }: { embedded?: boolean; in
 
                   {/* Sample response reveal */}
                   {phase === 'prompt' ? (
-                    <button className="btn btn-primary" onClick={reveal} style={{ alignSelf: 'flex-start' }}>
-                      {t('studio.reveal')}
-                    </button>
+                    <div className="stack" style={{ ['--gap' as string]: '8px' }}>
+                      <div className="row" style={{ ['--gap' as string]: '8px' }}>
+                        <button className={`btn btn-primary${listening ? ' is-recording' : ''}`} onClick={answerAloud}>
+                          <Icon name="mic" size={16} /> {listening ? (lang === 'fr' ? 'Terminer et évaluer' : 'Stop and score') : lang === 'fr' ? 'Répondre à voix haute' : 'Answer out loud'}
+                        </button>
+                        <button className="btn btn-secondary" onClick={reveal} disabled={listening}>{t('studio.reveal')}</button>
+                      </div>
+                      {listening && <span className="tiny" style={{ color: 'var(--burgundy)' }}>{lang === 'fr' ? 'Je vous écoute… parlez en français, puis touchez « Terminer ».' : 'Listening… answer in French, then tap “Stop and score”.'}</span>}
+                      {micMsg && <span className="tiny" style={{ color: 'var(--burgundy)' }}>{micMsg}</span>}
+                    </div>
                   ) : (
                     <motion.div className="card" style={{ ['--pad' as string]: '16px', borderColor: 'rgba(196,154,90,.4)' }} initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={spring.settle}>
                       <div className="row between" style={{ marginBottom: 8 }}>
-                        <span className="tiny" style={{ fontWeight: 700, color: 'var(--burgundy)' }}>{t('studio.response')}</span>
-                        <DemoTag>{t('demo.simulated')}</DemoTag>
+                        <span className="tiny" style={{ fontWeight: 700, color: 'var(--burgundy)' }}>{mine ? (lang === 'fr' ? 'Votre réponse (transcrite)' : 'Your answer (transcribed)') : t('studio.response')}</span>
+                        {!mine && <DemoTag>{t('demo.simulated')}</DemoTag>}
                       </div>
                       <p lang="fr" style={{ lineHeight: 1.7, color: 'var(--ink)' }}>
                         {tokens.map((tok, i) => (
@@ -254,7 +289,7 @@ export function SpeakingStudio({ embedded, initialId }: { embedded?: boolean; in
                       <motion.div key="feedback" className="card" style={{ ['--pad' as string]: '16px', boxShadow: 'var(--shadow-2)' }} initial={{ opacity: 0, x: 30, rotateY: -8 }} animate={{ opacity: 1, x: 0, rotateY: 0 }} exit={{ opacity: 0 }} transition={spring.settle}>
                         <div className="row between" style={{ marginBottom: 12 }}>
                           <h3 className="h4">{t('studio.feedback')}</h3>
-                          <DemoTag>{t('demo.simulated')}</DemoTag>
+                          {result?.feedback.simulated !== false ? <DemoTag>{t('demo.simulated')}</DemoTag> : <span className="chip chip-gold">{lang === 'fr' ? 'Évaluation automatique' : 'Automatic scoring'}</span>}
                         </div>
                         {result && (
                           <div className="stack" style={{ ['--gap' as string]: '12px' }}>
@@ -282,7 +317,7 @@ export function SpeakingStudio({ embedded, initialId }: { embedded?: boolean; in
                                 </motion.li>
                               ))}
                             </ul>
-                            <p className="tiny muted">{t('demo.sampleFeedback')}</p>
+                            <p className="tiny muted">{result.feedback.simulated !== false ? t('demo.sampleFeedback') : lang === 'fr' ? 'Évalué d’après la transcription de votre navigateur : vocabulaire utilisé, longueur, débit et clarté. Votre tuteur donne un retour détaillé sur les sons.' : 'Scored from your browser’s transcript: phrases used, length, pace and clarity. Your tutor gives detailed feedback on sounds.'}</p>
                           </div>
                         )}
                       </motion.div>

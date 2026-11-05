@@ -1,4 +1,4 @@
-import { ADMIN_METRICS, CONTACT_BLOCK_MESSAGE, DEMO_TODAY, canContact, findContactDetails, type AppNotification } from '@laporte/shared';
+import { ADMIN_METRICS, CONTACT_BLOCK_MESSAGE, DEMO_TODAY, canContact, findContactDetails, type AppNotification, ownedBy } from '@laporte/shared';
 import { bookingRepository } from '../repositories/bookingRepository';
 import { catalogRepository } from '../repositories/catalogRepository';
 import { messageRepository, notificationRepository, vocabularyRepository } from '../repositories/engagementRepository';
@@ -46,7 +46,7 @@ export const classmateMessaging = {
 export const notificationService = {
   list: () => notificationRepository.all(),
   /** Records a portal notification. Email/WhatsApp copies go through the (mock) sender. */
-  record(n: Pick<AppNotification, 'channel' | 'title' | 'body' | 'simulated'>) {
+  record(n: Pick<AppNotification, 'channel' | 'title' | 'body' | 'simulated' | 'learnerId'>) {
     return notificationRepository.insert({ ...n, id: nextId('ntf'), createdAt: new Date().toISOString(), read: false });
   },
   markRead(id: string) {
@@ -67,8 +67,9 @@ export const adminService = {
 };
 
 export const vocabularyService = {
-  add(input: { fr: string; en: string; example: string; source: string }) {
-    return vocabularyRepository.byFrench(input.fr) ?? vocabularyRepository.insert({ ...input, id: nextId('v'), addedOn: DEMO_TODAY, mastered: false });
+  add(input: { fr: string; en: string; example: string; source: string }, learnerId: string) {
+    const existing = vocabularyRepository.all().find((v) => ownedBy(v, learnerId) && v.fr.toLowerCase() === input.fr.toLowerCase());
+    return existing ?? vocabularyRepository.insert({ ...input, learnerId, id: nextId('v'), addedOn: DEMO_TODAY, mastered: false });
   },
   toggle(id: string) {
     const v = vocabularyRepository.toggleMastered(id);

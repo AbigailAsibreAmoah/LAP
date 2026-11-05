@@ -1,7 +1,7 @@
 // Offline demo adapter. Mirrors the backend's business rules against the
 // in-browser demo state so the prototype runs with no server at all.
 // It is deliberately separate from the HTTP path so it can be deleted later.
-import { canReschedule, cancellationOutcome, nowIso, missedSessions, sessionCost, type ContentState, type SessionPurpose, MEMBERSHIP_PLANS, SPEAKING_SCENARIOS, TUTORS, type Booking, type CancellationRecord, type Learner, type Payment, type PaymentMethod } from '@laporte/shared';
+import { canReschedule, cancellationOutcome, nowIso, missedSessions, sessionCost, type ContentState, type SessionPurpose, MEMBERSHIP_PLANS, SPEAKING_SCENARIOS, TUTORS, type Booking, type CancellationRecord, type Learner, type Payment, type PaymentMethod, canBuyLevel, levelProduct } from '@laporte/shared';
 import { computeAvailability } from '../../features/bookings/availability';
 import { ApiError } from '../http';
 
@@ -77,7 +77,9 @@ export const demoAdapter = {
   },
 
   initializePayment(learner: Learner, input: { planId: string; method: PaymentMethod; provider: string; simulateFailure?: boolean; discountTokenId?: string }, content?: ContentState) {
-    const plan = MEMBERSHIP_PLANS.find((p) => p.id === input.planId);
+    const level = levelProduct(input.planId);
+    if (level && !canBuyLevel(learner, level.level)) throw new ApiError(409, 'level_not_next', 'Levels are unlocked one at a time: buy the next level up from yours.');
+    const plan = MEMBERSHIP_PLANS.find((p) => p.id === input.planId) ?? level;
     if (!plan) throw new ApiError(404, 'not_found', 'Plan not found');
     if (plan.demoPriceGhs === null) throw new ApiError(422, 'quote_required', 'This programme is priced on request.');
     let discount: Payment['discount'];
@@ -106,9 +108,10 @@ export const demoAdapter = {
   verifyPayment(learner: Learner, payment: Payment) {
     if (payment.status !== 'pending') return { payment, learner };
     const failed = pendingFailures.delete(payment.reference);
-    const plan = MEMBERSHIP_PLANS.find((p) => p.id === payment.planId)!;
     const verified: Payment = { ...payment, status: failed ? 'failed' : 'success' };
-    const updated: Learner = failed ? learner : { ...learner, planId: plan.id, credits: learner.credits + plan.credits };
+    const level = levelProduct(payment.planId);
+    const plan = MEMBERSHIP_PLANS.find((p) => p.id === payment.planId);
+    const updated: Learner = failed ? learner : level ? { ...learner, unlockedLevel: level.level } : { ...learner, planId: plan!.id, credits: learner.credits + plan!.credits };
     return { payment: verified, learner: updated };
   },
 

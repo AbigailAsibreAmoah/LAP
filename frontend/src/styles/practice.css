@@ -1,0 +1,32 @@
+/* ---------- Spaced-repetition review ---------- */
+.review-wrap { display: grid; gap: 14px; max-width: 560px; margin: 0 auto; }
+.review-top { display: flex; align-items: center; gap: 12px; }
+.review-goal { display: flex; align-items: center; gap: 8px; flex: 1; }
+.review-goal-bar { flex: 1; height: 8px; border-radius: 999px; background: #ece4d8; overflow: hidden; }
+.review-goal-bar span { display: block; height: 100%; border-radius: 999px; background: #c49a5a; }
+.review-card { position: relative; display: grid; gap: 14px; padding: 28px 22px; text-align: center; min-height: 280px; align-content: center; }
+.review-new { position: absolute; top: 14px; left: 14px; }
+.review-front { font-family: var(--font-display, inherit); font-size: clamp(1.6rem, 4vw, 2.2rem); color: var(--navy, #141b34); }
+.review-back { display: grid; gap: 6px; padding-top: 12px; border-top: 1px solid var(--line, #ece4d8); }
+.review-back strong { font-size: 1.25rem; }
+.review-grades { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+@media (max-width: 480px) {
+  .review-grades { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+.review-grade { display: grid; gap: 2px; padding: 10px 6px; border: 1px solid var(--line, #ece4d8); border-radius: 12px; background: #fff; cursor: pointer; }
+.review-grade[data-grade='again'] { border-color: #f0c6cf; color: #6e1630; }
+.review-grade[data-grade='hard'] { border-color: #f1e0bf; color: #8a5a12; }
+.review-grade[data-grade='good'] { border-color: #cfe5d8; color: #1f6b4f; }
+.review-grade[data-grade='easy'] { border-color: #cbd8ef; color: #1c4c7a; }
+.review-grade:hover { background: #faf6ef; }
+.review-done { display: grid; gap: 8px; justify-items: center; max-width: 560px; margin: 0 auto; padding: 32px; text-align: center; }
+
+/* ---------- Pronunciation scoring ---------- */
+.pron-check { margin-top: 8px; padding: 8px 10px; border-radius: 10px; background: #faf6ef; font-size: 15px; }
+.pron-score { display: inline-block; min-width: 46px; margin-right: 8px; padding: 2px 8px; border-radius: 999px; color: #fff; font-weight: 800; font-size: 13px; text-align: center; }
+.pron-score[data-band='great'] { background: #1f6b4f; }
+.pron-score[data-band='good'] { background: #5b8a3a; }
+.pron-score[data-band='almost'] { background: #a77b3c; }
+.pron-score[data-band='low'] { background: #6e1630; }
+.pron-word { color: #b4233c; text-decoration: underline wavy rgba(180, 35, 60, 0.5); text-underline-offset: 3px; }
+.pron-word[data-ok] { color: #1f6b4f; text-decoration: none; }

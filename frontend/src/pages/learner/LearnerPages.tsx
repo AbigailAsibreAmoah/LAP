@@ -1,4 +1,4 @@
-import { BLOCK_LABEL, COURSES } from '@laporte/shared';
+import { BLOCK_LABEL, COURSES, accessLevel, canStudy, levelProductId, nextLevel, levelIndex } from '@laporte/shared';
 import { AnimatePresence, motion } from 'motion/react';
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useLocation, useParams, useSearchParams } from 'react-router-dom';
@@ -9,6 +9,7 @@ import { Modal } from '../../components/ui/Overlay';
 import { useToast } from '../../components/ui/Toasts';
 import { PerformancePassport } from '../../features/performance-passport/PerformancePassport';
 import { SpeakingStudio } from '../../features/speaking-studio/SpeakingStudio';
+import { ReviewSession, useReviewToday } from '../../features/review/ReviewSession';
 import { useI18n } from '../../i18n/I18nProvider';
 import { useStore } from '../../state/AppStore';
 import { formatClip, formatDate } from '../../utils/format';
@@ -42,6 +43,7 @@ export function LessonPage() {
   const ref = course?.modules.flatMap((m) => m.lessons).find((x) => x.id === lessonId);
   const preview = params.get('preview') === '1';
   const locked = course?.premium && plan === 'plan-essentials' && !preview;
+  const levelLocked = !!lesson && !canStudy(store.learner, lesson.level);
   const [quizzes, setQuizzes] = useState<Record<string, { correct: number; total: number }>>({});
   const { hash } = useLocation();
   const completed = content.completions.some((c) => c.lessonId === lessonId && c.learnerId === store.learner.id);
@@ -56,6 +58,22 @@ export function LessonPage() {
   if (!course || (!ref && !lesson)) return <EmptyState title={fr ? 'Leçon introuvable' : 'Lesson not found'} />;
   const title = lesson?.title ?? ref!.title;
   const back = <Link to={`/app/courses/${course.id}`} className="link small"><Icon name="arrowLeft" size={15} /> {t('lesson.back')}</Link>;
+
+  if (levelLocked && lesson)
+    return (
+      <div className="stack" style={{ ['--gap' as string]: '20px', maxWidth: 640 }}>
+        {back}
+        <div className="card stack center" style={{ textAlign: 'center', ['--pad' as string]: '40px' }}>
+          <Icon name="lock" size={32} />
+          <h2 style={{ fontSize: '1.6rem' }} lang="fr">{title}</h2>
+          <p className="muted">{levelIndex(lesson.level) < levelIndex(store.learner.level) ? (fr ? `Cette leçon est au niveau ${lesson.level}, en dessous du vôtre (${store.learner.level}). Vos cours affichent uniquement le contenu de votre niveau.` : `This lesson is at ${lesson.level}, below your level (${store.learner.level}). Your courses show only your level’s content.`) : fr ? `Cette leçon est au niveau ${lesson.level}. Votre niveau actuel est ${accessLevel(store.learner)}.` : `This lesson is at ${lesson.level}. Your current level is ${accessLevel(store.learner)}.`}</p>
+          {nextLevel(accessLevel(store.learner)) ? (
+            <Link to={`/app/checkout/${levelProductId(nextLevel(accessLevel(store.learner))!)}`} className="btn btn-primary"><Icon name="lock" size={15} /> {fr ? `Débloquer ${nextLevel(accessLevel(store.learner))}` : `Unlock ${nextLevel(accessLevel(store.learner))}`}</Link>
+          ) : null}
+          <Link to="/app/placement" className="link small">{fr ? 'Ou repasser le test de positionnement' : 'Or retake the placement test'}</Link>
+        </div>
+      </div>
+    );
 
   if (locked)
     return (
@@ -273,7 +291,10 @@ export function PassportPage() {
 export function VocabularyPage() {
   const { t, lang } = useI18n();
   const { vocabulary, actions } = useStore();
-  const [mode, setMode] = useState<'list' | 'cards'>('list');
+  const [vparams] = useSearchParams();
+  const reviewToday = useReviewToday();
+  // Opens on today's review when words are due (spaced repetition), otherwise on the list.
+  const [mode, setMode] = useState<'review' | 'list' | 'cards'>(vparams.get('mode') === 'review' || reviewToday.deck.length ? 'review' : 'list');
   const [q, setQ] = useState('');
   const [adding, setAdding] = useState(false);
   const [form, setForm] = useState({ fr: '', en: '', example: '' });
@@ -286,12 +307,14 @@ export function VocabularyPage() {
     <>
       <PageHead title={t('vocab.title')} sub={t('vocab.sub')}>
         <div className="row">
-          <Segmented label={t('vocab.title')} value={mode} onChange={setMode} options={[{ value: 'list', label: t('common.viewAll') }, { value: 'cards', label: t('vocab.practice') }]} />
+          <Segmented label={t('vocab.title')} value={mode} onChange={setMode} options={[{ value: 'review', label: lang === 'fr' ? `Révision du jour (${reviewToday.deck.length})` : `Today’s review (${reviewToday.deck.length})` }, { value: 'list', label: t('common.viewAll') }, { value: 'cards', label: t('vocab.practice') }]} />
           <button className="btn btn-primary btn-sm" onClick={() => setAdding(true)}><Icon name="plus" size={15} /> {t('vocab.add')}</button>
         </div>
       </PageHead>
 
-      {mode === 'list' ? (
+      {mode === 'review' ? (
+        <ReviewSession onDone={() => setMode('list')} />
+      ) : mode === 'list' ? (
         <div className="stack" style={{ ['--gap' as string]: '16px' }}>
           <label className="row" style={{ maxWidth: 360, position: 'relative' }}>
             <span className="sr-only">{t('vocab.search')}</span>

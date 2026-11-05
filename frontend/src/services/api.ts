@@ -1,6 +1,6 @@
 // Domain service interface used by the UI. Each call goes to the backend when it
 // is reachable and falls back to the offline demo adapter otherwise.
-import { buildPlacementResult, communityOps, ContentError, contentOps, kidOps, DEMO_LEARNER_ID, nowIso, type AppNotification, type Booking, type Cohort, type ContentState, type ContentUser, type LessonInput, type LessonPatch, type Learner, type MediaAsset, type MessageThread, type PackInput, type Payment, type PaymentMethod, type PlacementInput, type PlacementResult, type QuestId, type SessionPurpose, type SpeakingFeedback, type TransitionAction, type VocabEntry } from '@laporte/shared';
+import { buildPlacementResult, communityOps, ContentError, contentOps, kidOps, reviewOps, type ReviewGrade, DEMO_LEARNER_ID, nowIso, type AppNotification, type Booking, type Cohort, type ContentState, type ContentUser, type LessonInput, type LessonPatch, type Learner, type MediaAsset, type MessageThread, type PackInput, type Payment, type PaymentMethod, type PlacementInput, type PlacementResult, type QuestId, type SessionPurpose, type SpeakingFeedback, type TransitionAction, type VocabEntry, type PlacementItem, newLearner, normEmail, validEmail, type SignUpInput } from '@laporte/shared';
 import { demoAdapter } from './demo/demoAdapter';
 import { ApiError, detectApi, markApiUnavailable, request, upload } from './http';
 
@@ -32,6 +32,10 @@ async function contentCall<R extends { state: ContentState }>(user: ContentUser,
 export type UploadMeta = { title: string; accent?: MediaAsset['accent']; speaker?: string; transcript?: string; durationSec: number; replaceId?: string };
 
 type KidPatch = Parameters<typeof kidOps.updateKid>[3];
+export const reviewApi = {
+  review: (s: ContentState, user: ContentUser, vocabId: string, grade: ReviewGrade) => contentCall(user, `/me/vocabulary/${vocabId}/review`, 'POST', { grade }, () => reviewOps.reviewWord(s, localCtx(user), vocabId, grade)),
+};
+
 export const kidsApi = {
   create: (s: ContentState, user: ContentUser, input: Parameters<typeof kidOps.createKid>[2]) => contentCall(user, '/kids', 'POST', input, () => kidOps.createKid(s, localCtx(user), input)),
   update: (s: ContentState, user: ContentUser, id: string, patch: KidPatch) => contentCall(user, `/kids/${id}`, 'PATCH', patch, () => kidOps.updateKid(s, localCtx(user), id, patch)),
@@ -113,9 +117,16 @@ export const contentApi = {
     contentCall(user, `/content/lessons/${id}/complete`, 'POST', { quizScore }, () => contentOps.completeLesson(s, localCtx(user), id, quizScore)),
   claimQuest: (s: ContentState, user: ContentUser, learner: { id: string; streakDays: number }, questId: QuestId) =>
     contentCall(user, '/me/quests/claim', 'POST', { questId }, () => contentOps.claimQuest(s, localCtx(user, nowIso()), learner, questId)),
-  placement: (s: ContentState, user: ContentUser, input: PlacementInput) =>
+  /** Starts a test attempt: questions without answers, options shuffled for this attempt (server only). */
+  async placementAttempt(user: ContentUser) {
+    if (!(await detectApi())) throw new ApiError(503, 'offline', 'The placement test needs a connection to La Porte. You can skip it and start at A1.');
+    return request<{ attemptId: string; expiresAt: string; questions: PlacementItem[] }>('/me/placement/attempt', { method: 'POST', userId: user.id });
+  },
+  placement: (s: ContentState, user: ContentUser, input: PlacementInput & { attemptId?: string }) =>
     contentCall<{ state: ContentState; result: PlacementResult; learner?: Learner }>(user, '/me/placement', 'POST', input, () => {
-      const result = buildPlacementResult(input, { id: localId('pl'), learnerId: user.id, takenAt: new Date().toISOString() });
+      // Offline, only skipping is possible: the answer key never reaches the browser.
+      if (Object.keys(input.answers).length) throw new ApiError(503, 'offline', 'The placement test needs a connection to La Porte.');
+      const result = buildPlacementResult(input, { id: localId('pl'), learnerId: user.id, takenAt: new Date().toISOString() }, []);
       return { ...contentOps.recordPlacement(s, localCtx(user), result), result };
     }),
 };
@@ -214,14 +225,31 @@ export const api = {
   content: contentApi,
   community: communityApi,
   kids: kidsApi,
+  review: reviewApi,
 
   /** Returns the server's entry (with its id) when connected, otherwise null. */
-  async addVocabulary(entry: { fr: string; en: string; example: string; source: string }): Promise<VocabEntry | null> {
-    return (await detectApi()) ? request<VocabEntry>('/me/vocabulary', { method: 'POST', body: entry, userId: DEMO_LEARNER_ID }) : null;
+  async addVocabulary(entry: { fr: string; en: string; example: string; source: string }, userId: string = DEMO_LEARNER_ID): Promise<VocabEntry | null> {
+    return (await detectApi()) ? request<VocabEntry>('/me/vocabulary', { method: 'POST', body: entry, userId }) : null;
   },
 
-  async toggleVocabulary(id: string) {
-    if (await detectApi()) await request(`/me/vocabulary/${id}/toggle`, { method: 'POST', userId: DEMO_LEARNER_ID });
+  async toggleVocabulary(id: string, userId: string = DEMO_LEARNER_ID) {
+    if (await detectApi()) await request(`/me/vocabulary/${id}/toggle`, { method: 'POST', userId });
+  },
+
+  /** Demo accounts: the server creates the learner; offline, the browser does (same rules). */
+  async register(input: SignUpInput, existing: Learner[]): Promise<Learner> {
+    if (await detectApi()) return request<Learner>('/auth/register', { method: 'POST', body: input });
+    if (input.name.trim().length < 2) throw new ApiError(422, 'invalid_name', 'Enter your name.');
+    if (!validEmail(input.email)) throw new ApiError(422, 'invalid_email', 'Enter a valid email address.');
+    if (existing.some((l) => l.email?.toLowerCase() === normEmail(input.email))) throw new ApiError(409, 'email_taken', 'An account already uses this email. Log in instead.');
+    return newLearner(input, localId('lrn'), new Date().toISOString().slice(0, 10));
+  },
+
+  async login(email: string, existing: Learner[]): Promise<Learner> {
+    if (await detectApi()) return request<Learner>('/auth/login', { method: 'POST', body: { email } });
+    const found = existing.find((l) => l.email?.toLowerCase() === normEmail(email));
+    if (!found) throw new ApiError(404, 'no_account', 'No account uses this email. Check it, or create an account.');
+    return found;
   },
 
   async markNotificationRead(id: string) {

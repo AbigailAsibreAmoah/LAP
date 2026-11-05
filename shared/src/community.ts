@@ -4,6 +4,7 @@ import { ContentError, pointsFor, registerTokenGranter, seedContentBase, type Co
 import { SEED_SHIFT_DAYS, shiftDatesInPlace, shiftIso, weekendNudge, weeklySchedule } from './clock';
 import { LEARNERS, TUTORS } from './demo-data';
 import { seedKids } from './kids';
+import type { ReviewDay, VocabReview } from './review';
 import type { Booking, CefrLevel, Localized } from './types';
 
 const L = (en: string, fr: string): Localized => ({ en, fr });
@@ -392,6 +393,7 @@ export function seedContent(): ContentState {
     cohorts,
     reports: [],
     ...seedKids(),
+    ...seedReviews(),
     follows: shiftDatesInPlace([
       { followerId: 'lrn-ama', followeeId: 'lrn-adwoa', at: SEED_AT },
       { followerId: 'lrn-adwoa', followeeId: 'lrn-ama', at: SEED_AT },
@@ -403,3 +405,13 @@ export function seedContent(): ContentState {
   };
 }
 
+
+/** Demo: Ama has reviewed for three days running; two words are due again today. */
+function seedReviews(): { vocabReviews: VocabReview[]; reviewDays: ReviewDay[] } {
+  const d = (iso: string) => shiftIso(iso, SEED_SHIFT_DAYS);
+  const r = (vocabId: string, box: number, dueOn: string): VocabReview => ({ learnerId: 'lrn-ama', vocabId, box, dueOn: d(dueOn), reps: box + 1, lapses: 0, lastAt: d('2026-10-25T08:30:00Z') });
+  return {
+    vocabReviews: [r('v1', 1, '2026-10-26'), r('v2', 2, '2026-10-26'), r('v3', 3, '2026-11-01')],
+    reviewDays: ['2026-10-23', '2026-10-24', '2026-10-25'].map((day) => ({ learnerId: 'lrn-ama', day: d(day), count: 6 })),
+  };
+}

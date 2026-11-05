@@ -1,4 +1,4 @@
-import { communityOps, type Payment, type PaymentMethod } from '@laporte/shared';
+import { canBuyLevel, communityOps, levelProduct, type Payment, type PaymentMethod } from '@laporte/shared';
 import { contentStore } from '../repositories/contentStore';
 import { catalogRepository } from '../repositories/catalogRepository';
 import { learnerRepository } from '../repositories/learnerRepository';
@@ -18,7 +18,10 @@ export async function initializePayment(input: {
 }) {
   const learner = learnerRepository.byId(input.learnerId);
   if (!learner) throw notFound('Learner');
-  const plan = catalogRepository.plan(input.planId);
+  // A membership plan, or the next CEFR level's courses ("level-B1").
+  const level = levelProduct(input.planId);
+  if (level && !canBuyLevel(learner, level.level)) throw new AppError(409, 'level_not_next', 'Levels are unlocked one at a time: buy the next level up from yours.');
+  const plan = catalogRepository.plan(input.planId) ?? level;
   if (!plan) throw notFound('Plan');
   if (plan.demoPriceGhs === null) {
     throw new AppError(422, 'quote_required', 'This programme is priced on request. Please contact the institute.');
@@ -69,9 +72,15 @@ export async function verifyPayment(reference: string) {
   const result = await integrations.payments.verify(reference);
   payment.status = result.status;
   if (result.status === 'success') {
-    const plan = catalogRepository.plan(payment.planId)!;
-    learnerRepository.setPlan(payment.learnerId, plan.id);
-    learnerRepository.adjustCredits(payment.learnerId, plan.credits);
+    const level = levelProduct(payment.planId);
+    if (level) {
+      const learner = learnerRepository.byId(payment.learnerId)!;
+      learner.unlockedLevel = level.level;
+    } else {
+      const plan = catalogRepository.plan(payment.planId)!;
+      learnerRepository.setPlan(payment.learnerId, plan.id);
+      learnerRepository.adjustCredits(payment.learnerId, plan.credits);
+    }
     if (payment.discount) {
       const r = communityOps.redeemToken(contentStore.get(), { user: { id: payment.learnerId, role: 'learner' }, now: new Date().toISOString(), newId: nextId }, payment.discount.tokenId);
       contentStore.set(r.state);
@@ -83,6 +92,7 @@ export async function verifyPayment(reference: string) {
       variables: { reference },
     });
     notificationService.record({
+      learnerId: payment.learnerId,
       channel: 'email',
       title: { en: 'Payment receipt', fr: 'Reçu de paiement' },
       body: { en: `Receipt ${reference} (simulated).`, fr: `Reçu ${reference} (simulé).` },

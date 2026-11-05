@@ -96,8 +96,12 @@ export interface Learner {
   id: string;
   name: string;
   firstName: string;
+  /** Sign-in email (demo learners use example.com addresses). */
+  email?: string;
   city: string;
   level: CefrLevel;
+  /** Highest level bought beyond the placement level (see access.ts). */
+  unlockedLevel?: CefrLevel;
   progressToNext: number; // 0–100
   goal: Localized;
   areaId: CourseAreaId;
@@ -188,6 +192,8 @@ export type NotificationChannel = 'in-app' | 'email' | 'whatsapp';
 
 export interface AppNotification {
   id: string;
+  /** Recipient learner; seed notifications without one belong to the demo learner. */
+  learnerId?: string;
   channel: NotificationChannel;
   title: Localized;
   body: Localized;
@@ -254,6 +260,8 @@ export interface SpeakingFeedback {
 
 export interface VocabEntry {
   id: string;
+  /** Owner; seed entries without one belong to the demo learner. */
+  learnerId?: string;
   fr: string;
   en: string;
   example: string;

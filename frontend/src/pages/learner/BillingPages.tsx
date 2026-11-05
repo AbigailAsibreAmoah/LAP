@@ -1,4 +1,4 @@
-import { MEMBERSHIP_PLANS, type Payment, type PaymentMethod } from '@laporte/shared';
+import { MEMBERSHIP_PLANS, type Payment, type PaymentMethod, levelProduct, type MembershipPlan, productName } from '@laporte/shared';
 import { AnimatePresence, motion } from 'motion/react';
 import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
@@ -6,6 +6,7 @@ import { Token } from '../../components/3d/Depth';
 import { spring } from '../../components/animations/motion';
 import { DemoTag, EmptyState, FocusTitle, Notice, Segmented, StatusBadge } from '../../components/ui/Controls';
 import { Icon } from '../../components/ui/Icon';
+import { LevelAccessBanner } from '../../features/access/LevelAccess';
 import { useI18n } from '../../i18n/I18nProvider';
 import { useStore } from '../../state/AppStore';
 import { formatDate, formatGhs } from '../../utils/format';
@@ -23,6 +24,7 @@ export function BillingPage() {
   return (
     <div className="stack" style={{ ['--gap' as string]: '24px' }}>
       <PageHead title={t('billing.title')} />
+      <LevelAccessBanner />
       <div className="dash-grid">
         <div className="card card-navy span-7" style={{ ['--pad' as string]: '26px' }}>
           <span className="eyebrow" style={{ color: '#E7C78F' }}>{t('billing.current')}</span>
@@ -79,7 +81,7 @@ export function BillingPage() {
                 <tr key={p.id}>
                   <td className="num">{formatDate(p.createdAt, lang, { day: 'numeric', month: 'short', year: 'numeric' })}</td>
                   <td className="num tiny">{p.reference}</td>
-                  <td>{l(MEMBERSHIP_PLANS.find((x) => x.id === p.planId)!.name)}</td>
+                  <td>{l(productName(p.planId))}</td>
                   <td>{p.provider}</td>
                   <td className="num" style={{ fontWeight: 600 }}>{formatGhs(p.amountGhs, lang)}</td>
                   <td><PaymentStatus p={p} /></td>
@@ -108,7 +110,25 @@ export function CheckoutPage() {
   const { planId } = useParams();
   const { t, l, lang } = useI18n();
   const { actions, learner, content } = useStore();
-  const plan = MEMBERSHIP_PLANS.find((p) => p.id === planId);
+  // A membership plan, or the next level's courses ("level-B1").
+  const level = levelProduct(planId ?? '');
+  const plan: MembershipPlan | undefined =
+    MEMBERSHIP_PLANS.find((p) => p.id === planId) ??
+    (level
+      ? {
+          ...MEMBERSHIP_PLANS[0],
+          id: level.id,
+          name: level.name,
+          tagline: { en: `Unlock every ${level.level} course and lesson.`, fr: `Débloquez tous les cours et leçons ${level.level}.` },
+          features: [
+            { en: `All ${level.level} lessons in your courses`, fr: `Toutes les leçons ${level.level} de vos cours` },
+            { en: `${level.level} courses on your pathway`, fr: `Les cours ${level.level} de votre parcours` },
+            { en: 'The levels you have reached stay open', fr: 'Les niveaux atteints restent ouverts' },
+          ],
+          demoPriceGhs: level.demoPriceGhs,
+          credits: 0,
+        }
+      : undefined);
   const discounts = content.tokens.filter((tk) => tk.learnerId === learner.id && tk.kind === 'discount' && !tk.redeemedAt);
   const [tokenId, setTokenId] = useState<string>('');
   const percent = discounts.find((tk) => tk.id === tokenId)?.value ?? 0;
@@ -215,7 +235,7 @@ export function CheckoutPage() {
                 <FocusTitle className="h3">{stage === 'success' ? t('checkout.success') : t('checkout.failed')}</FocusTitle>
                 {stage === 'failed' && !error && <p className="small muted">{lang === 'fr' ? 'Aucun crédit n’a été ajouté. Vous pouvez réessayer.' : 'No credits were added. You can try again.'}</p>}
                 {payment && <p className="small muted num">{t('billing.reference')}: {payment.reference}</p>}
-                {stage === 'success' && <p className="small">{l(plan.name)} · {learner.credits} {t('dash.credits').toLowerCase()}</p>}
+                {stage === 'success' && (level ? <p className="small">{lang === 'fr' ? `Niveau ${level.level} débloqué : vos cours ${level.level} sont ouverts.` : `${level.level} unlocked: your ${level.level} courses are open.`} <Link to="/app/courses" className="link">{lang === 'fr' ? 'Voir mes cours' : 'See my courses'}</Link></p> : <p className="small">{l(plan.name)} · {learner.credits} {t('dash.credits').toLowerCase()}</p>)}
                 {error && <p className="field-error">{error}</p>}
                 <div className="row" style={{ justifyContent: 'center' }}>
                   {stage === 'success' ? (

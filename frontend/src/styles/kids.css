@@ -139,3 +139,34 @@
 
 .kid-demo-code { padding: 10px 12px; border: 1px dashed #c49a5a; border-radius: 12px; background: #fffaf2; color: #6e1630; font-size: 14px; cursor: pointer; }
 .kid-demo-code strong { letter-spacing: 0.12em; }
+
+/* ---------- Learn the words ---------- */
+.kid-learn { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 10px; margin-top: 10px; }
+.kid-learn-card { position: relative; display: grid; gap: 2px; justify-items: center; padding: 14px 8px; border: 2px solid #f1e6d2; border-radius: 18px; background: #fffaf2; font-size: 16px; cursor: pointer; }
+.kid-learn-card[data-on] { border-color: #c49a5a; background: #fff3d6; transform: scale(1.03); }
+.kid-learn-card[data-heard] { border-color: #cfe5d8; }
+.kid-learn-emoji { font-size: 34px; }
+.kid-learn-tick { position: absolute; top: 6px; right: 10px; color: #1f6b4f; font-weight: 800; }
+
+/* ---------- Dis-le ! ---------- */
+.kg-speak { display: grid; gap: 10px; justify-items: center; text-align: center; }
+.kg-mic { display: grid; place-items: center; width: 110px; height: 110px; border: 0; border-radius: 50%; background: #6e1630; color: #fff; font-size: 48px; cursor: pointer; box-shadow: 0 0 0 10px #f3e1e5; }
+.kg-mic[data-live] { animation: kg-mic-pulse 1s ease-in-out infinite; }
+@keyframes kg-mic-pulse { 50% { box-shadow: 0 0 0 22px rgba(110, 22, 48, 0.12); } }
+.kg-speak-msg { margin: 0; padding: 8px 14px; border-radius: 12px; background: #fff3d6; }
+
+/* ---------- 3-star confetti ---------- */
+.kg-end { position: relative; overflow: hidden; }
+.kg-confetti { position: absolute; inset: 0; pointer-events: none; }
+.kg-confetti span { position: absolute; top: -12px; width: 9px; height: 14px; border-radius: 2px; animation: kg-fall 1.8s ease-in forwards; }
+@keyframes kg-fall { to { top: 105%; opacity: 0.2; transform: rotate(540deg); } }
+@media (prefers-reduced-motion: reduce) {
+  .kg-confetti, .kg-mic[data-live] { animation: none; }
+  .kg-confetti { display: none; }
+}
+
+/* ---------- Story time ---------- */
+.kid-story-lines { display: grid; gap: 8px; margin: 12px 0 14px; padding: 0; list-style: none; }
+.kid-story-lines button { display: flex; align-items: center; gap: 14px; width: 100%; padding: 12px 14px; border: 2px solid transparent; border-radius: 16px; background: #fffaf2; font-size: 18px; text-align: left; cursor: pointer; }
+.kid-story-lines li[data-on] button { border-color: #c49a5a; background: #fff3d6; }
+.kid-story-emoji { flex: none; font-size: 32px; }

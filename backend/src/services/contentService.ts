@@ -1,9 +1,10 @@
-import { buildPlacementResult, communityOps, ContentError, contentOps, nowIso, LEARNERS, visibleContent, type ContentState, type ContentUser, type LessonInput, type LessonPatch, type PackInput, type PlacementInput, type QuestId, type TransitionAction } from '@laporte/shared';
+import { buildPlacementResult, canStudy, ownedBy, communityOps, reviewOps, type ReviewGrade, ContentError, contentOps, nowIso, LEARNERS, visibleContent, type ContentState, type ContentUser, type LessonInput, type LessonPatch, type PackInput, type PlacementInput, type QuestId, type TransitionAction } from '@laporte/shared';
 import { contentStore } from '../repositories/contentStore';
-import { messageRepository } from '../repositories/engagementRepository';
+import { messageRepository, vocabularyRepository } from '../repositories/engagementRepository';
 import { learnerRepository } from '../repositories/learnerRepository';
 import { nextId } from '../utils/ids';
 import { notificationService } from './engagementService';
+import { placementService } from './placementService';
 
 const ctx = (user: ContentUser) => ({ user, now: new Date().toISOString(), newId: nextId });
 
@@ -77,6 +78,12 @@ export const contentService = {
     return out;
   },
 
+  /** Spaced repetition: the word must be in the learner's phrasebook. */
+  reviewWord(user: ContentUser, vocabId: string, grade: ReviewGrade) {
+    if (!vocabularyRepository.all().some((v) => v.id === vocabId && ownedBy(v, user.id))) throw new ContentError(404, 'not_found', 'Word not found');
+    return apply(user, (s) => reviewOps.reviewWord(s, ctx(user), vocabId, grade));
+  },
+
   /** Reports are checked against the real thread so nobody can report a message they cannot see. */
   reportMessage(user: ContentUser, input: Parameters<typeof contentOps.reportMessage>[2]) {
     const thread = messageRepository.thread(input.threadId);
@@ -86,7 +93,12 @@ export const contentService = {
   },
   resolveReport: (user: ContentUser, id: string, outcome: 'actioned' | 'dismissed') => apply(user, (s) => contentOps.resolveReport(s, ctx(user), id, outcome)),
 
-  completeLesson: (user: ContentUser, lessonId: string, quizScore?: { correct: number; total: number }) => apply(user, (s) => contentOps.completeLesson(s, ctx(user), lessonId, quizScore)),
+  completeLesson(user: ContentUser, lessonId: string, quizScore?: { correct: number; total: number }) {
+    const lesson = contentStore.get().lessons.find((l) => l.id === lessonId);
+    const learner = learnerRepository.byId(user.id);
+    if (lesson && learner && !canStudy(learner, lesson.level)) throw new ContentError(403, 'level_locked', `This lesson is at ${lesson.level}. Unlock ${lesson.level} to study it.`);
+    return apply(user, (s) => contentOps.completeLesson(s, ctx(user), lessonId, quizScore));
+  },
 
   /** Quest progress is measured against the demo clock so seeded activity counts. */
   claimQuest(user: ContentUser, questId: QuestId) {
@@ -95,9 +107,13 @@ export const contentService = {
   },
 
   /** Scores the placement on the server, stores it and sets the learner's provisional level. */
-  recordPlacement(user: ContentUser, input: PlacementInput) {
-    const result = buildPlacementResult(input, { id: nextId('pl'), learnerId: user.id, takenAt: new Date().toISOString() });
+  recordPlacement(user: ContentUser, input: PlacementInput & { attemptId?: string }) {
+    // Answers arrive by shown position; the server maps them to the real options and scores them.
+    const { attemptId, ...rest } = input;
+    const answers = placementService.resolve(user, attemptId, rest.answers);
+    const result = buildPlacementResult({ ...rest, answers }, { id: nextId('pl'), learnerId: user.id, takenAt: new Date().toISOString() }, placementService.bank);
     const out = apply(user, (s) => contentOps.recordPlacement(s, ctx(user), result));
+    placementService.complete(attemptId);
     const learner = learnerRepository.byId(user.id);
     if (learner) learner.level = result.level;
     return { ...out, result, learner };
