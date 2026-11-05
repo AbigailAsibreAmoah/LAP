@@ -34,10 +34,10 @@ describe('kids profiles', () => {
     expect(ok.body.activity.stars).toBe(3);
   });
 
-  it('opens a world after two games in the one before', () => {
+  it('opens every world for now', () => {
     const s = seedContent();
     const p = kidProgress(s, 'kid-kwame');
-    expect(p.units.map((u) => u.unlocked)).toEqual([true, true, false, false, false, false, false, false, false, false]);
+    expect(p.units.every((u) => u.unlocked)).toBe(true);
     expect(p.totalStars).toBe(7);
   });
 

@@ -214,7 +214,7 @@ export function DashboardPage() {
               {lesson.title.split(' ').slice(0, -1).join(' ')} <em>{lesson.title.split(' ').slice(-1)}</em>
             </h1>
             <p className="small muted" style={{ marginTop: 10 }}>
-              {l(lesson.objective)} {l(course.title)} · A2 · Module 2.
+              {l(lesson.objective)} {l(course.title)} · {lessonDoc?.level ?? learner.level} · Module {(lessonDoc?.moduleIndex ?? 0) + 1}.
             </p>
             <div className="row tiny" style={{ ['--gap' as string]: '8px 18px', marginTop: 14, color: 'var(--ink-2)', fontWeight: 600 }}>
               <span className="row" style={{ ['--gap' as string]: '6px' }}><Icon name="clock" size={14} /> {lesson.minutes} {t('common.min')}</span>

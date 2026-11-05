@@ -175,6 +175,9 @@ export const starsFor = (score: number, total: number): 0 | 1 | 2 | 3 => {
 
 /* ---------------- Progress ---------------- */
 
+/** Off for now: all worlds are open. */
+export const KID_WORLDS_IN_ORDER = false;
+
 export function kidProgress(state: Pick<ContentState, 'kidActivities'>, kidId: string) {
   const acts = state.kidActivities.filter((a) => a.kidId === kidId);
   const best = (unitId: string, game: KidGame) => Math.max(0, ...acts.filter((a) => a.unitId === unitId && a.game === game).map((a) => a.stars));
@@ -184,8 +187,9 @@ export function kidProgress(state: Pick<ContentState, 'kidActivities'>, kidId: s
     const done = KID_GAMES.filter((g) => games[g] > 0).length;
     return { unit: u, index: i, games, stars, done, badge: KID_GAMES.every((g) => games[g] >= 2) };
   });
-  // A world opens once the previous one has two games played (the first two are always open).
-  const withLock = units.map((u, i) => ({ ...u, unlocked: i < 2 || units[i - 1].done >= 2 }));
+  // For now every world is open. Set KID_WORLDS_IN_ORDER to true to open each world only after
+  // two games in the one before (the first two always open).
+  const withLock = units.map((u, i) => ({ ...u, unlocked: !KID_WORLDS_IN_ORDER || i < 2 || units[i - 1].done >= 2 }));
   const totalStars = acts.reduce((n, a) => n + a.stars, 0);
   return { units: withLock, totalStars, badges: withLock.filter((u) => u.badge).length, played: acts.length, recent: [...acts].sort((a, b) => b.at.localeCompare(a.at)).slice(0, 8) };
 }
