@@ -1,6 +1,7 @@
-import { BLOCK_LABEL, COURSES, accessLevel, canStudy, levelProductId, nextLevel, levelIndex } from '@laporte/shared';
+import { BLOCK_LABEL, COURSES, accessLevel, canStudy, levelProductId, nextLevel, levelIndex, type CefrLevel } from '@laporte/shared';
 import { AnimatePresence, motion } from 'motion/react';
 import { useEffect, useMemo, useState } from 'react';
+import { StoryClip } from '../../features/story/StoryClip';
 import { Link, useLocation, useParams, useSearchParams } from 'react-router-dom';
 import { spring } from '../../components/animations/motion';
 import { DemoTag, EmptyState, Segmented, Tabs } from '../../components/ui/Controls';
@@ -47,6 +48,8 @@ export function LessonPage() {
   const [quizzes, setQuizzes] = useState<Record<string, { correct: number; total: number }>>({});
   const { hash } = useLocation();
   const completed = content.completions.some((c) => c.lessonId === lessonId && c.learnerId === store.learner.id);
+  // The celebration clip plays only right after the learner finishes; later visits show the still.
+  const [justFinished, setJustFinished] = useState(false);
 
   // Deep links (e.g. from the dashboard plan) land on the right part of the lesson.
   useEffect(() => {
@@ -123,7 +126,8 @@ export function LessonPage() {
     try {
       // Only a first-attempt quiz counts towards the "ace" quest.
       await actions.content.completeLesson(lesson.id, total && !retried ? { correct, total } : undefined);
-      toast(fr ? 'Leçon terminée. Bravo !' : 'Lesson complete. Well done!');
+      if (lesson.kind === 'assessment') setJustFinished(true);
+      toast(lesson.kind === 'assessment' ? (fr ? `Évaluation ${lesson.level} terminée. Bravo !` : `${lesson.level} assessment complete. Well done!`) : fr ? 'Leçon terminée. Bravo !' : 'Lesson complete. Well done!');
     } catch (e) {
       toast(e instanceof Error ? e.message : String(e));
     }
@@ -175,6 +179,9 @@ export function LessonPage() {
           </motion.section>
         ))}
 
+        {completed && lesson.kind === 'assessment' ? (
+          <LevelDone level={lesson.level} play={justFinished} />
+        ) : (
         <section className="lesson-finish">
           {completed ? (
             <>
@@ -197,8 +204,34 @@ export function LessonPage() {
             </>
           )}
         </section>
+        )}
       </div>
     </div>
+  );
+}
+
+/** After an end-of-level assessment: the learner's fist pump (once), what happens next, and the way up. */
+function LevelDone({ level, play }: { level: CefrLevel; play: boolean }) {
+  const { lang } = useI18n();
+  const fr = lang === 'fr';
+  const { learner } = useStore();
+  const up = nextLevel(level);
+  const canBuy = !!up && levelIndex(accessLevel(learner)) < levelIndex(up);
+  return (
+    <section className="level-done" aria-labelledby="level-done-title">
+      <StoryClip name="learner-success" play={play} idle="last" />
+      <div className="level-done-text">
+        <span className="level-done-kicker">{fr ? 'Évaluation rendue' : 'Assessment submitted'}</span>
+        <h2 id="level-done-title">{fr ? `Niveau ${level} : bravo !` : `Level ${level}: well done!`}</h2>
+        <p>{up
+          ? (fr ? `Votre tuteur corrige la tâche écrite et confirme votre niveau ${level}. Ensuite, le niveau ${up} vous attend.` : `Your tutor marks the written task and confirms your ${level} level. Then ${up} is waiting for you.`)
+          : (fr ? 'Votre tuteur corrige la tâche écrite et confirme votre niveau C2 : le plus haut niveau du CECRL.' : 'Your tutor marks the written task and confirms your C2 level: the top of the CEFR.')}</p>
+        <div className="level-done-actions">
+          {up && canBuy && <Link to={`/app/checkout/${levelProductId(up)}`} className="btn btn-primary">{fr ? `Débloquer le niveau ${up}` : `Unlock level ${up}`}</Link>}
+          <Link to="/app/passport" className="btn btn-secondary">{fr ? 'Voir mon passeport' : 'See my passport'}</Link>
+        </div>
+      </div>
+    </section>
   );
 }
 

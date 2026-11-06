@@ -16,6 +16,7 @@ import { useI18n } from '../../i18n/I18nProvider';
 import { useStore } from '../../state/AppStore';
 import { formatClip, formatGhs } from '../../utils/format';
 import { HowSteps } from './HomePage';
+import { StoryStrip } from '../../features/story/StoryClip';
 
 export function PageHero({ eyebrow, title, sub, children }: { eyebrow?: string; title: string; sub?: string; children?: ReactNode }) {
   return (
@@ -376,6 +377,14 @@ export function HowItWorksPage() {
         <div className="container stack" style={{ ['--gap' as string]: '64px' }}>
           <h2 className="sr-only">{t('home.howEyebrow')}</h2>
           <HowSteps />
+          <section className="story-section" aria-labelledby="story-title">
+            <div className="story-section-head">
+              <span className="eyebrow">{lang === 'fr' ? 'Un apprenant, un niveau' : 'One learner, one level'}</span>
+              <h2 id="story-title" className="h2">{lang === 'fr' ? 'Étudier, parler, réussir.' : 'Study, speak, succeed.'}</h2>
+              <p className="muted">{lang === 'fr' ? 'Voici à quoi ressemble un niveau à La Porte, du premier cours à l’évaluation de fin de niveau.' : 'This is what one level at La Porte looks like, from the first lesson to the end-of-level assessment.'}</p>
+            </div>
+            <StoryStrip />
+          </section>
           <div className="grid grid-2">
             {blocks.map(([title, body], i) => (
               <Reveal key={title} delay={i * 0.05} className="card card-ivory" as="div">

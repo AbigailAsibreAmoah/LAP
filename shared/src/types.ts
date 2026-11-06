@@ -104,6 +104,8 @@ export interface Learner {
   level: CefrLevel;
   /** Highest level bought beyond the placement level (see access.ts). */
   unlockedLevel?: CefrLevel;
+  /** Levels whose courses have been paid for (the starting level, from "Start my B1 courses", and any bought later). A1 is free. */
+  paidLevels?: CefrLevel[];
   progressToNext: number; // 0–100
   goal: Localized;
   areaId: CourseAreaId;

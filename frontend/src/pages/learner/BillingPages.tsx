@@ -1,13 +1,14 @@
-import { MEMBERSHIP_PLANS, type Payment, type PaymentMethod, levelProduct, type MembershipPlan, productName } from '@laporte/shared';
+import { MEMBERSHIP_PLANS, type Payment, levelProduct, type MembershipPlan, productName } from '@laporte/shared';
 import { AnimatePresence, motion } from 'motion/react';
 import { useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { Token } from '../../components/3d/Depth';
 import { spring } from '../../components/animations/motion';
-import { DemoTag, EmptyState, FocusTitle, Notice, Segmented, StatusBadge } from '../../components/ui/Controls';
+import { DemoTag, EmptyState, FocusTitle, Notice, StatusBadge } from '../../components/ui/Controls';
 import { Icon } from '../../components/ui/Icon';
 import { LevelAccessBanner } from '../../features/access/LevelAccess';
 import { ReceiptModal } from '../../features/billing/Receipt';
+import { PaystackSim } from '../../features/billing/PaystackSim';
 import { useToast } from '../../components/ui/Toasts';
 import { useI18n } from '../../i18n/I18nProvider';
 import { useStore } from '../../state/AppStore';
@@ -115,14 +116,13 @@ function PaymentStatus({ p }: { p: Payment }) {
   return <StatusBadge status={p.status}>{label}</StatusBadge>;
 }
 
-type Stage = 'form' | 'processing' | 'success' | 'failed';
-const NETWORKS = ['MTN MoMo', 'Telecel Cash', 'AT Money'];
+type Stage = 'form' | 'success' | 'failed';
 
 export function CheckoutPage() {
   const [showReceipt, setShowReceipt] = useState(false);
   const { planId } = useParams();
   const { t, l, lang } = useI18n();
-  const { actions, learner, content } = useStore();
+  const { learner, content } = useStore();
   // A membership plan, or the next level's courses ("level-B1").
   const level = levelProduct(planId ?? '');
   const plan: MembershipPlan | undefined =
@@ -145,43 +145,16 @@ export function CheckoutPage() {
   const discounts = content.tokens.filter((tk) => tk.learnerId === learner.id && tk.kind === 'discount' && !tk.redeemedAt);
   const [tokenId, setTokenId] = useState<string>('');
   const percent = discounts.find((tk) => tk.id === tokenId)?.value ?? 0;
-  const [method, setMethod] = useState<PaymentMethod>('mobile-money');
-  const [network, setNetwork] = useState(NETWORKS[0]);
-  const [phone, setPhone] = useState('024 000 0000');
-  const [card, setCard] = useState('4242 4242 4242 4242');
-  const [simFail, setSimFail] = useState(false);
   const [stage, setStage] = useState<Stage>('form');
-  const [step, setStep] = useState(0);
   const [payment, setPayment] = useState<Payment | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [paying, setPaying] = useState(false);
+  const [params] = useSearchParams();
+  // Came from "Start my B1 courses" after the placement test.
+  const fromStart = params.get('start') === '1';
+  const error: string | null = null;
 
   if (!plan || plan.demoPriceGhs === null) return <EmptyState title={t('pricing.quote')}><Link to="/organisations" className="link">{t('pricing.contact')}</Link></EmptyState>;
-
-  const steps = lang === 'fr'
-    ? ['Création de la transaction', method === 'mobile-money' ? 'Validation sur le téléphone (simulée)' : 'Autorisation de la carte (simulée)', 'Vérification côté serveur']
-    : ['Creating transaction', method === 'mobile-money' ? 'Approval on phone (simulated)' : 'Card authorisation (simulated)', 'Server-side verification'];
-
-  const pay = async () => {
-    setError(null);
-    setStage('processing');
-    setStep(0);
-    try {
-      const p = await actions.startPayment({ planId: plan.id, method, provider: method === 'mobile-money' ? network : `Card •••• ${card.replace(/\s/g, '').slice(-4)}`, simulateFailure: simFail, discountTokenId: tokenId || undefined });
-      setPayment(p);
-      await new Promise((r) => setTimeout(r, 900));
-      setStep(1);
-      await new Promise((r) => setTimeout(r, 1300));
-      setStep(2);
-      const verified = await actions.verifyPayment(p.reference);
-      await new Promise((r) => setTimeout(r, 700));
-      setPayment(verified);
-      // Completion is only shown once verification explicitly confirms success.
-      setStage(verified.status === 'success' ? 'success' : 'failed');
-    } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
-      setStage('failed');
-    }
-  };
+  const total = Math.round(plan.demoPriceGhs * (100 - percent)) / 100;
 
   return (
     <div style={{ maxWidth: 980 }}>
@@ -191,27 +164,21 @@ export function CheckoutPage() {
         <div className="card" style={{ ['--pad' as string]: '26px', minHeight: 380 }}>
           <AnimatePresence mode="wait">
             {stage === 'form' && (
-              <motion.form key="form" className="stack" style={{ ['--gap' as string]: '16px' }} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onSubmit={(e) => { e.preventDefault(); void pay(); }}>
-                <h2 className="h4">{t('checkout.method')}</h2>
-                <Segmented label={t('checkout.method')} value={method} onChange={setMethod} options={[{ value: 'mobile-money', label: <><Icon name="phone" size={14} /> {t('checkout.momo')}</> }, { value: 'card', label: <><Icon name="card" size={14} /> {t('checkout.card')}</> }]} />
-                {method === 'mobile-money' ? (
-                  <>
-                    <div className="field">
-                      <span className="label">{t('checkout.network')}</span>
-                      <div className="row" style={{ ['--gap' as string]: '8px' }}>
-                        {NETWORKS.map((n) => (
-                          <button type="button" key={n} className={`chip ${network === n ? 'chip-navy' : 'chip-outline'}`} style={{ cursor: 'pointer', minHeight: 38, padding: '0 14px' }} onClick={() => setNetwork(n)} aria-pressed={network === n}>{n}</button>
-                        ))}
-                      </div>
+              <motion.div key="form" className="stack" style={{ ['--gap' as string]: '16px' }} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                {fromStart && level && (
+                  <div className="pay-start">
+                    <span className="tone-icon" data-tone="burgundy"><Icon name="book" size={17} /></span>
+                    <div>
+                      <strong>{lang === 'fr' ? `Dernière étape : vos cours ${level.level}` : `Last step: your ${level.level} courses`}</strong>
+                      <div className="tiny muted">{lang === 'fr' ? `Le test vous a placé au niveau ${level.level}. Réglez le niveau pour ouvrir ses cours et son évaluation finale.` : `The test placed you at ${level.level}. Pay for the level to open its courses and its end-of-level assessment.`}</div>
                     </div>
-                    <label className="field"><span className="label">{t('checkout.phone')}</span><input className="input" inputMode="tel" autoComplete="tel" value={phone} onChange={(e) => setPhone(e.target.value)} required pattern="[0-9 +]{9,16}" aria-describedby="phone-help" /><span id="phone-help" className="tiny muted">{lang === 'fr' ? '9 à 16 chiffres, ex. 024 000 0000. Aucun débit réel.' : '9–16 digits, e.g. 024 000 0000. Nothing is charged.'}</span></label>
-                  </>
-                ) : (
-                  <label className="field"><span className="label">{t('checkout.cardNumber')}</span><input className="input" inputMode="numeric" autoComplete="off" value={card} onChange={(e) => setCard(e.target.value)} required pattern="[0-9 ]{12,23}" aria-describedby="card-help" /><span id="card-help" className="tiny muted">{lang === 'fr' ? 'Utilisez le numéro de test prérempli. N’entrez pas une vraie carte.' : 'Use the prefilled test number. Do not enter a real card.'}</span></label>
+                  </div>
                 )}
-                <label className="row small" style={{ ['--gap' as string]: '8px', cursor: 'pointer' }}>
-                  <input type="checkbox" checked={simFail} onChange={(e) => setSimFail(e.target.checked)} /> {t('checkout.simFail')}
-                </label>
+                <h2 className="h4">{lang === 'fr' ? 'Paiement' : 'Payment'}</h2>
+                <p className="small muted" style={{ margin: 0 }}>{lang === 'fr' ? 'Payez par Mobile Money (MTN, Telecel, AT) ou par carte, dans la fenêtre sécurisée de Paystack.' : 'Pay by Mobile Money (MTN, Telecel, AT) or card, in Paystack’s secure window.'}</p>
+                <div className="pay-methods" aria-hidden>
+                  <span>MTN MoMo</span><span>Telecel Cash</span><span>AT Money</span><span>Visa</span><span>Mastercard</span>
+                </div>
                 {discounts.length > 0 && (
                   <label className="field">
                     <span className="label">{lang === 'fr' ? 'Récompense de fidélité' : 'Loyalty reward'}</span>
@@ -222,24 +189,10 @@ export function CheckoutPage() {
                   </label>
                 )}
                 <Notice>{t('checkout.noCharge')}</Notice>
-                <button className="btn btn-primary btn-lg">
-                  {t('checkout.pay')} {formatGhs(Math.round(plan.demoPriceGhs! * (100 - percent)) / 100, lang)}
+                <button type="button" className="btn btn-primary btn-lg pay-btn" onClick={() => setPaying(true)}>
+                  <Icon name="lock" size={16} /> {lang === 'fr' ? 'Payer' : 'Pay'} {formatGhs(total, lang)} {lang === 'fr' ? 'avec Paystack' : 'with Paystack'}
                   {percent > 0 && <span style={{ textDecoration: 'line-through', opacity: 0.6, marginLeft: 8, fontWeight: 500 }}>{formatGhs(plan.demoPriceGhs!, lang)}</span>}
                 </button>
-              </motion.form>
-            )}
-            {stage === 'processing' && (
-              <motion.div key="proc" className="stack" style={{ ['--gap' as string]: '18px', paddingTop: 20 }} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} role="status" aria-live="polite">
-                <h2 className="h4">{t('checkout.processing')}</h2>
-                {steps.map((s, i) => (
-                  <div key={s} className="row" style={{ opacity: i <= step ? 1 : 0.4, flexWrap: 'nowrap' }}>
-                    <span style={{ width: 28, height: 28, borderRadius: 28, display: 'grid', placeItems: 'center', background: i < step ? 'var(--green-100)' : 'var(--ivory)', color: i < step ? 'var(--green)' : 'var(--navy)' }}>
-                      {i < step ? <Icon name="check" size={15} /> : i === step ? <motion.span style={{ width: 12, height: 12, borderRadius: 12, border: '2px solid var(--burgundy)', borderTopColor: 'transparent' }} animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 0.8, ease: 'linear' }} /> : i + 1}
-                    </span>
-                    <span>{s}</span>
-                  </div>
-                ))}
-                {payment && <p className="tiny muted num">{t('billing.reference')}: {payment.reference}</p>}
               </motion.div>
             )}
             {(stage === 'success' || stage === 'failed') && (
@@ -254,11 +207,11 @@ export function CheckoutPage() {
                   {stage === 'success' ? (
                     <>
                       {payment && <button type="button" className="btn btn-secondary" onClick={() => setShowReceipt(true)}><Icon name="file" size={15} /> {lang === 'fr' ? 'Voir le reçu' : 'View receipt'}</button>}
-                      <Link to="/app" className="btn btn-primary">{t('checkout.done')}</Link>
+                      {level ? <Link to="/app/courses" className="btn btn-primary">{lang === 'fr' ? `Commencer mes cours ${level.level}` : `Start my ${level.level} courses`}</Link> : <Link to="/app" className="btn btn-primary">{t('checkout.done')}</Link>}
                       <Link to="/app/book" className="btn btn-secondary">{t('app.book')}</Link>
                     </>
                   ) : (
-                    <button className="btn btn-primary" onClick={() => { setStage('form'); setSimFail(false); }}>{t('checkout.retry')}</button>
+                    <button className="btn btn-primary" onClick={() => { setStage('form'); }}>{t('checkout.retry')}</button>
                   )}
                 </div>
               </motion.div>
@@ -278,6 +231,7 @@ export function CheckoutPage() {
         </aside>
       </div>
       <ReceiptModal payment={showReceipt ? payment ?? null : null} learner={learner} onClose={() => setShowReceipt(false)} />
+      <PaystackSim open={paying} planId={plan.id} title={l(plan.name)} amountGhs={total} discountTokenId={tokenId || undefined} onClose={() => setPaying(false)} onPaid={(p) => { setPayment(p); setPaying(false); setStage('success'); }} />
     </div>
   );
 }

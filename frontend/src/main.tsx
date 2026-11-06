@@ -12,6 +12,7 @@ import './styles/passport-map.css';
 import './styles/note.css';
 import './styles/tutors.css';
 import './styles/tutor-profile.css';
+import './styles/story.css';
 import './styles/mobile.css';
 
 listenForStaleBuilds();

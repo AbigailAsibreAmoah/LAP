@@ -37,7 +37,7 @@ export async function initializePayment(input: {
   if (!learner) throw notFound('Learner');
   // A membership plan, or the next CEFR level's courses ("level-B1").
   const level = levelProduct(input.planId);
-  if (level && !canBuyLevel(learner, level.level)) throw new AppError(409, 'level_not_next', 'Levels are unlocked one at a time: buy the next level up from yours.');
+  if (level && !canBuyLevel(learner, level.level)) throw new AppError(409, 'level_not_next', 'Levels are unlocked one at a time: your starting level, then the next level up.');
   const plan = catalogRepository.plan(input.planId) ?? level;
   if (!plan) throw notFound('Plan');
   if (plan.demoPriceGhs === null) {
@@ -92,7 +92,9 @@ export async function verifyPayment(reference: string) {
     const level = levelProduct(payment.planId);
     if (level) {
       const learner = learnerRepository.byId(payment.learnerId)!;
-      learner.unlockedLevel = level.level;
+      // Paying for the starting level keeps the level as it is; a higher level unlocks it.
+      if (level.level !== learner.level) learner.unlockedLevel = level.level;
+      learner.paidLevels = [...new Set([...(learner.paidLevels ?? []), level.level])];
     } else {
       const plan = catalogRepository.plan(payment.planId)!;
       learnerRepository.setPlan(payment.learnerId, plan.id);

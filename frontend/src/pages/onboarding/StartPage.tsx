@@ -3,6 +3,7 @@ import { Brand } from '../../components/layout/Brand';
 import { LanguageSwitch } from '../../components/ui/Controls';
 import { useI18n } from '../../i18n/I18nProvider';
 import { useStore } from '../../state/AppStore';
+import { StoryStrip } from '../../features/story/StoryClip';
 import { PlacementPage } from '../content/PracticePages';
 
 /** Set at sign-up; cleared once the learner has a starting level (test taken or skipped). */
@@ -31,6 +32,7 @@ export function StartPage() {
         <span className="eyebrow">{fr ? 'Étape 2 sur 2' : 'Step 2 of 2'}</span>
         <h1 className="start-title">{fr ? `Bienvenue, ${learner.firstName} !` : `Welcome, ${learner.firstName}!`}</h1>
         <p className="lede">{fr ? 'Choisissez votre point de départ. Vos cours s’ouvriront à ce niveau, puis vous passerez au suivant quand vous serez prêt.' : 'Choose where you start. Your courses open at that level; you move up to the next one when you’re ready.'}</p>
+        <StoryStrip compact numbered={false} />
         <PlacementPage onboarding />
       </main>
     </div>

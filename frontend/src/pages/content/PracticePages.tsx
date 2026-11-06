@@ -1,5 +1,7 @@
 import {
   COURSES,
+  startLevelUnpaid,
+  levelProductId,
   LEARNERS,
   LEARNING_GOALS,
   PLACEMENT_LEVELS,
@@ -564,7 +566,7 @@ export function PlacementPage({ onboarding }: { onboarding?: boolean } = {}) {
               </div>
               <ol className="steps-list">{result.plan.firstSteps.map((s, i) => <li key={i}>{l(s)}</li>)}</ol>
               <div className="row">
-                <Link to={onboarding ? '/app/courses' : '/app'} className="btn btn-brand"><span>{onboarding ? (fr ? `Commencer mes cours ${result.level}` : `Start my ${result.level} courses`) : fr ? 'Aller au tableau de bord' : 'Go to my dashboard'}</span></Link>
+                <Link to={onboarding ? (startLevelUnpaid({ level: result.level, paidLevels: learner.paidLevels }) ? `/app/checkout/${levelProductId(result.level)}?start=1` : '/app/courses') : '/app'} className="btn btn-brand"><span>{onboarding ? (fr ? `Commencer mes cours ${result.level}` : `Start my ${result.level} courses`) : fr ? 'Aller au tableau de bord' : 'Go to my dashboard'}</span></Link>
                 {(() => {
                   const took = Object.keys(result.answers).length > 0;
                   const retakeAt = Date.parse(result.takenAt) + PLACEMENT_RETAKE_DAYS * 86_400_000;

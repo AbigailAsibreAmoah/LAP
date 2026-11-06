@@ -54,8 +54,13 @@ export function levelProduct(id: string): LevelProduct | null {
 
 export const levelProductId = (level: CefrLevel) => `${LEVEL_PRODUCT_PREFIX}${level}`;
 
-/** Levels are bought one at a time, in order: only the next level up can be purchased. */
-export function canBuyLevel(learner: Pick<Learner, 'level' | 'unlockedLevel'>, level: CefrLevel) {
+/** Whether this learner still has to pay for their starting level (A1 is free). */
+export const startLevelUnpaid = (learner: Pick<Learner, 'level' | 'paidLevels'>) => learner.level !== 'A1' && !learner.paidLevels?.includes(learner.level);
+
+/** Levels are bought one at a time, in order: the starting level (once, after placement), then
+ *  only the next level up. */
+export function canBuyLevel(learner: Pick<Learner, 'level' | 'unlockedLevel' | 'paidLevels'>, level: CefrLevel) {
+  if (level === learner.level) return startLevelUnpaid(learner);
   return nextLevel(accessLevel(learner)) === level;
 }
 
