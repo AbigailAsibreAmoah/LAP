@@ -1,8 +1,7 @@
 // La Porte Kids storybooks: four original stories set in West Africa, one per age band, each deeper
 // than the last. Sample texts for the La Porte teaching team to review before launch.
 import type { PortraitSpec } from '@laporte/shared';
-import type { Expression } from '../../../components/3d/Portrait';
-import type { Pose } from './Figure';
+import type { Face, Pose } from './Figure';
 import { MORE_BOOKS } from './moreStories';
 
 export type SceneKind = 'bedroom' | 'compound' | 'market' | 'savanna' | 'coast' | 'classroom' | 'street' | 'pitch' | 'garden' | 'hill' | 'workshop' | 'mangrove' | 'kitchen' | 'festival';
@@ -19,7 +18,7 @@ export interface CastMember {
   x: number; // % of scene width (centre of the character)
   y: number; // % of scene height (top of the head)
   size: number; // % of scene width
-  expression?: Expression;
+  expression?: Face;
   flip?: boolean;
   /** What the character is doing; chosen from the expression when left out. */
   pose?: Pose;
@@ -87,14 +86,14 @@ const BASE_BOOKS: Book[] = [
     id: 'bk-doudou', title: 'Le doudou de Kofi', titleEn: 'Kofi’s cuddly toy', ages: '4–5', minAge: 4, maxAge: 5, level: 'Éveil',
     blurb: { en: 'Kofi can’t sleep without Nounou the bear. Where is he?', fr: 'Kofi ne dort pas sans Nounou l’ourson. Où est-il ?' },
     cloth: '#2E6FB0', ink: '#FFF3D6',
-    cover: { scene: 'bedroom', time: 'night', props: ['window', 'moon', 'stars', 'lamp', 'bed', 'teddy'], cast: [{ who: 'kofi', x: 46, y: 30, size: 24, expression: 'joy' }] },
+    cover: { scene: 'bedroom', time: 'night', props: ['window', 'moon', 'stars', 'lamp', 'bed', 'teddy'], cast: [{ who: 'kofi', x: 46, y: 30, size: 24, expression: 'laugh' }] },
     pages: [
-      { scene: 'bedroom', time: 'night', props: ['window', 'moon', 'stars', 'lamp', 'bed'], cast: [{ who: 'kofi', x: 46, y: 30, size: 24, expression: 'calm' }], fr: 'C’est la nuit. Kofi va au lit.', en: 'It is night. Kofi goes to bed.' },
-      { scene: 'bedroom', time: 'night', props: ['window', 'moon', 'lamp', 'bed'], cast: [{ who: 'kofi', x: 46, y: 30, size: 24, expression: 'focus' }], fr: 'Oh ! Où est Nounou ?', en: 'Oh! Where is Nounou?' },
-      { scene: 'compound', time: 'dusk', props: ['house', 'mortar', 'goat'], cast: [{ who: 'kofi', x: 30, y: 34, size: 22, expression: 'focus' }, { who: 'maman', x: 68, y: 26, size: 26, expression: 'smile' }], fr: 'Dans la cour ? Non. Ici, il y a la chèvre.', en: 'In the yard? No. Here, there is the goat.' },
-      { scene: 'compound', time: 'dusk', props: ['house', 'well'], cast: [{ who: 'kofi', x: 40, y: 34, size: 22, expression: 'calm' }], fr: 'Près du puits ? Non. Ici, il y a de l’eau.', en: 'Near the well? No. Here, there is water.' },
-      { scene: 'bedroom', time: 'night', props: ['window', 'moon', 'stars', 'lamp', 'bed', 'teddy'], cast: [{ who: 'maman', x: 64, y: 22, size: 28, expression: 'joy' }, { who: 'kofi', x: 38, y: 32, size: 22, expression: 'joy' }], fr: 'Sous le lit ? Oui ! Voilà Nounou !', en: 'Under the bed? Yes! Here is Nounou!' },
-      { scene: 'bedroom', time: 'night', props: ['window', 'moon', 'stars', 'bed', 'teddy'], cast: [{ who: 'kofi', x: 46, y: 34, size: 22, expression: 'calm' }], fr: 'Bonne nuit, Kofi. Bonne nuit, Nounou.', en: 'Good night, Kofi. Good night, Nounou.' },
+      { scene: 'bedroom', time: 'night', props: ['window', 'moon', 'stars', 'lamp', 'bed'], cast: [{ who: 'kofi', x: 46, y: 30, size: 24, expression: 'sleepy' }], fr: 'C’est la nuit. Kofi bâille : « Aaah ! »', en: 'It’s night. Kofi yawns: “Aaah!”' },
+      { scene: 'bedroom', time: 'night', props: ['window', 'moon', 'lamp', 'bed'], cast: [{ who: 'kofi', x: 46, y: 30, size: 24, expression: 'surprise' }], fr: 'Oh là là ! Où est Nounou ?', en: 'Oh dear! Where is Nounou?' },
+      { scene: 'compound', time: 'dusk', props: ['house', 'mortar', 'goat'], cast: [{ who: 'kofi', x: 30, y: 34, size: 22, expression: 'worried' }, { who: 'maman', x: 68, y: 26, size: 26, expression: 'smile' }], fr: 'Dans la cour ? Non ! Coucou, la chèvre !', en: 'In the yard? No! Hello, goat!' },
+      { scene: 'compound', time: 'dusk', props: ['house', 'well'], cast: [{ who: 'kofi', x: 40, y: 34, size: 22, expression: 'sad' }], fr: 'Près du puits ? Non… Kofi est triste.', en: 'Near the well? No… Kofi is sad.' },
+      { scene: 'bedroom', time: 'night', props: ['window', 'moon', 'stars', 'lamp', 'bed', 'teddy'], cast: [{ who: 'maman', x: 64, y: 22, size: 28, expression: 'joy' }, { who: 'kofi', x: 38, y: 32, size: 22, expression: 'laugh' }], fr: 'Sous le lit ? Oui ! Youpi ! Voilà Nounou !', en: 'Under the bed? Yes! Hooray! Here is Nounou!' },
+      { scene: 'bedroom', time: 'night', props: ['window', 'moon', 'stars', 'bed', 'teddy'], cast: [{ who: 'kofi', x: 46, y: 34, size: 22, expression: 'sleepy' }], fr: 'Un bisou pour Nounou. Chut… Bonne nuit !', en: 'A kiss for Nounou. Shh… Good night!' },
     ],
   },
 
@@ -177,13 +176,13 @@ const BASE_BOOKS: Book[] = [
     id: 'bk-chevre', title: 'Où va la chèvre ?', titleEn: 'Where is the goat going?', ages: '4–5', minAge: 4, maxAge: 5, level: 'Éveil',
     blurb: { en: 'Yao’s goat runs off through the village. Run, Yao, run!', fr: 'La chèvre de Yao s’échappe dans le village. Cours, Yao, cours !' },
     cloth: '#C0392B', ink: '#FFF3D6',
-    cover: { scene: 'compound', time: 'day', props: ['sun', 'house', 'goat', 'birds'], cast: [{ who: 'yao', x: 34, y: 30, size: 24, expression: 'joy' }] },
+    cover: { scene: 'compound', time: 'day', props: ['sun', 'house', 'goat', 'birds'], cast: [{ who: 'yao', x: 34, y: 30, size: 24, expression: 'laugh' }] },
     pages: [
-      { scene: 'compound', time: 'day', props: ['sun', 'house', 'goat'], cast: [{ who: 'yao', x: 32, y: 30, size: 24, expression: 'joy' }], fr: 'Voici Yao. Voici sa chèvre, Bêbê.', en: 'This is Yao. This is his goat, Bêbê.' },
-      { scene: 'street', time: 'day', props: ['sun', 'house', 'well'], cast: [{ who: 'yao', x: 34, y: 30, size: 24, expression: 'focus' }], fr: 'Oh non ! Bêbê part. Bêbê court !', en: 'Oh no! Bêbê leaves. Bêbê runs!' },
-      { scene: 'market', time: 'day', props: ['sun', 'stall', 'mangoes'], cast: [{ who: 'yao', x: 30, y: 28, size: 24, expression: 'focus' }], fr: 'Bêbê va au marché. Miam, les mangues !', en: 'Bêbê goes to the market. Yum, the mangoes!' },
-      { scene: 'savanna', time: 'day', props: ['sun', 'acacia', 'baobab'], cast: [{ who: 'yao', x: 30, y: 34, size: 22, expression: 'focus' }], fr: 'Bêbê va sous le grand arbre. Cours, Yao, cours !', en: 'Bêbê goes under the big tree. Run, Yao, run!' },
-      { scene: 'compound', time: 'dusk', props: ['house', 'goat'], cast: [{ who: 'yao', x: 32, y: 30, size: 24, expression: 'joy' }, { who: 'maman', x: 66, y: 24, size: 26, expression: 'joy', flip: true }], fr: 'Te voilà, Bêbê ! À la maison. Bonne nuit !', en: 'There you are, Bêbê! Home. Good night!' },
+      { scene: 'compound', time: 'day', props: ['sun', 'house', 'goat'], cast: [{ who: 'yao', x: 32, y: 30, size: 24, expression: 'laugh' }], fr: 'Voici Yao. Voici Bêbê, sa chèvre. Bêêê !', en: 'This is Yao. This is Bêbê, his goat. Baa!' },
+      { scene: 'street', time: 'day', props: ['sun', 'house', 'well'], cast: [{ who: 'yao', x: 34, y: 30, size: 24, expression: 'surprise' }], fr: 'Oh non ! Bêbê part. Vite, vite !', en: 'Oh no! Bêbê is leaving. Quick, quick!' },
+      { scene: 'market', time: 'day', props: ['sun', 'stall', 'mangoes'], cast: [{ who: 'yao', x: 30, y: 28, size: 24, expression: 'cheeky' }], fr: 'Bêbê mange une mangue. Miam, miam !', en: 'Bêbê eats a mango. Yum, yum!' },
+      { scene: 'savanna', time: 'day', props: ['sun', 'acacia', 'baobab'], cast: [{ who: 'yao', x: 30, y: 34, size: 22, expression: 'worried' }], fr: 'Bêbê court sous l’arbre. Attends, Bêbê !', en: 'Bêbê runs under the tree. Wait, Bêbê!' },
+      { scene: 'compound', time: 'dusk', props: ['house', 'goat'], cast: [{ who: 'yao', x: 32, y: 30, size: 24, expression: 'proud' }, { who: 'maman', x: 66, y: 24, size: 26, expression: 'joy', flip: true }], fr: 'Bravo, Yao ! Bêbê est à la maison.', en: 'Well done, Yao! Bêbê is home.' },
     ],
   },
   {

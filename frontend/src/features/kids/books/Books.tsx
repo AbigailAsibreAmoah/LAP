@@ -1,7 +1,8 @@
 import { motion, useReducedMotion } from 'motion/react';
 import { useCallback, useEffect, useRef, useState, type ButtonHTMLAttributes, type ReactNode } from 'react';
 import { useI18n } from '../../../i18n/I18nProvider';
-import { readAloud } from './readAloud';
+import { LITTLE_WORDS } from './littleWords';
+import { frenchVoices, listenerFor, onVoicesReady, readAloud, sayWord, setStoryVoice, storyVoice } from './readAloud';
 import { Scene } from './Scene';
 import { coverStage, stagedCasts, stageFor } from './staging';
 import type { Book } from './stories';
@@ -101,7 +102,7 @@ export function BookReader({ book, childName, saved, onToggleSave, onFinish, onE
         return;
       }
       setVoice({ page: ps[k], word: -1 });
-      stop.current = readAloud(book.pages[ps[k]].fr, (w) => setVoice({ page: ps[k], word: w }), () => step(k + 1));
+      stop.current = readAloud(book.pages[ps[k]].fr, (w) => setVoice({ page: ps[k], word: w }), () => step(k + 1), listenerFor(book.minAge));
     };
     step(0);
   }, [book]);
@@ -148,6 +149,7 @@ export function BookReader({ book, childName, saved, onToggleSave, onFinish, onE
         <button className="btn btn-ghost btn-sm" onClick={() => { hush(); onExit(); }}>← {fr ? 'La bibliothèque' : 'The bookshelf'}</button>
         <span className="bk-progress" aria-hidden><span style={{ width: `${progress * 100}%` }} /></span>
         {onToggleSave && <button className={`btn btn-sm ${saved ? 'btn-brand' : 'btn-ghost'}`} aria-pressed={!!saved} onClick={onToggleSave}>{saved ? '♥' : '♡'} {saved ? (fr ? 'Dans ma bibliothèque' : 'In my library') : fr ? 'Garder' : 'Keep'}</button>}
+        <VoicePicker />
         <button className="btn btn-ghost btn-sm" aria-pressed={showEn} onClick={() => setShowEn((s) => !s)}>{showEn ? (fr ? 'Cacher l’anglais' : 'Hide English') : 'English'}</button>
       </div>
 
@@ -319,6 +321,21 @@ function EndPage({ book, onFinish, onAgain, onExit }: { book: Book; onFinish: (s
           )}
         </div>
       )}
+      {LITTLE_WORDS[book.id] && (
+        <div className="bk-little">
+          <span className="bk-kicker">{fr ? 'Mes petits mots' : 'My little words'}</span>
+          <div className="bk-little-grid">
+            {LITTLE_WORDS[book.id].map((w) => (
+              <button key={w.fr} type="button" className="bk-little-word" onClick={() => sayWord(w.fr, 'little')} aria-label={`${w.fr} — ${w.en}`}>
+                <span className="bk-little-icon" aria-hidden>{w.icon}</span>
+                <span lang="fr" className="bk-little-fr">{w.fr}</span>
+                <span className="bk-little-en">{w.en}</span>
+              </button>
+            ))}
+          </div>
+          <span className="tiny" style={{ color: '#8d7a62' }}>{fr ? 'Touche un mot pour l’entendre, puis répète-le !' : 'Tap a word to hear it, then say it too!'}</span>
+        </div>
+      )}
       {book.glossary && (
         <div className="bk-glossary">
           <span className="bk-kicker">{fr ? 'Mots à retenir' : 'Words to remember'}</span>
@@ -331,5 +348,25 @@ function EndPage({ book, onFinish, onAgain, onExit }: { book: Book; onFinish: (s
         <button className="btn btn-brand btn-sm" onClick={onExit}>{fr ? 'Un autre livre' : 'Another book'}</button>
       </div>
     </div>
+  );
+}
+
+/** Lets a parent choose which French voice tells the stories on this device. */
+function VoicePicker() {
+  const { lang } = useI18n();
+  const fr = lang === 'fr';
+  const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
+  const [current, setCurrent] = useState('');
+  useEffect(() => onVoicesReady(() => { setVoices(frenchVoices()); setCurrent(storyVoice()?.name ?? ''); }), []);
+  if (voices.length < 2) return null;
+  const short = (n: string) => n.replace(/^(Microsoft|Google|Apple)\s+/i, '').replace(/\s*\(.*\)\s*$/, '').replace(/\s+Online.*$/i, '').slice(0, 22);
+  return (
+    <label className="bk-voice" title={fr ? 'Voix de la conteuse' : 'Storyteller voice'}>
+      <span aria-hidden>🎙️</span>
+      <span className="sr-only">{fr ? 'Voix de la conteuse' : 'Storyteller voice'}</span>
+      <select className="select" value={current} onChange={(e) => { setStoryVoice(e.target.value); setCurrent(e.target.value); const v = voices.find((x) => x.name === e.target.value); if (v) sayWord(fr ? 'Bonjour ! Je vais te raconter une histoire.' : 'Bonjour ! Je vais te raconter une histoire.', 'young'); }}>
+        {voices.map((v) => <option key={v.name} value={v.name}>{short(v.name)} · {v.lang.slice(3) || 'FR'}</option>)}
+      </select>
+    </label>
   );
 }

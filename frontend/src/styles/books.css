@@ -259,3 +259,16 @@
 .bk-drop-hint { top: 18px; right: 18px; left: auto; transform: none; }
 .bk-shelves[data-dragging] .bk-shelf-head .small { visibility: hidden; }
 @media (max-width: 640px) { .bk-drop-hint { top: 52px; right: auto; left: 14px; bottom: auto; } }
+
+/* "Mes petits mots" at the end of the 4–5 books: big, tappable, spoken */
+.bk-little { display: grid; gap: 10px; width: 100%; text-align: left; }
+.bk-little-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 10px; }
+.bk-little-word { display: grid; justify-items: center; gap: 2px; min-height: 92px; padding: 10px 8px; border: 2px solid #e2d3b6; border-radius: 18px; background: #fffdf7; cursor: pointer; font: inherit; transition: transform 0.15s, border-color 0.15s; }
+.bk-little-word:hover, .bk-little-word:focus-visible { transform: translateY(-2px) rotate(-1deg); border-color: #c49a5a; }
+.bk-little-word:active { transform: scale(0.96); }
+.bk-little-icon { font-size: 30px; line-height: 1; }
+.bk-little-fr { font-family: 'Andika', 'Trebuchet MS', system-ui, sans-serif; font-size: 18px; font-weight: 700; color: #6e1630; text-align: center; }
+.bk-little-en { font-size: 12px; color: #8d7a62; text-align: center; }
+.bk-voice { display: inline-flex; align-items: center; gap: 4px; }
+.bk-voice .select { min-height: 36px; max-width: 170px; padding: 4px 10px; border-radius: 999px; font-size: 13px; }
+@media (max-width: 640px) { .bk-voice .select { max-width: 130px; } }

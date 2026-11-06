@@ -82,7 +82,7 @@ function poseSpec(pose: Pose, b: Body, adult: boolean): PoseSpec {
   }
 }
 
-export function Figure({ who, spec, expression = 'smile', pose = 'stand', uid }: { who: string; spec: PortraitSpec; expression?: Expression; pose?: Pose; uid: string }) {
+export function Figure({ who, spec, expression = 'smile', pose = 'stand', uid }: { who: string; spec: PortraitSpec; expression?: Face; pose?: Pose; uid: string }) {
   const adult = isAdult(who);
   const b = adult ? ADULT : CHILD;
   const dress = DRESSES.has(who);
@@ -203,12 +203,60 @@ function HairBack({ spec, b }: { spec: PortraitSpec; b: Body }) {
   }
 }
 
-function Head({ spec, b, expression: given, mood }: { spec: PortraitSpec; b: Body; expression: Expression; mood?: 'sad' | 'sleep' }) {
+/** Faces: the four originals plus the feelings little readers recognise straight away. */
+export type Face = Expression | 'surprise' | 'sad' | 'laugh' | 'sleepy' | 'worried' | 'proud' | 'cheeky';
+
+function Head({ spec, b, expression: given, mood }: { spec: PortraitSpec; b: Body; expression: Face; mood?: 'sad' | 'sleep' }) {
   const { r, headY: y } = b;
   const ey = y + r * 0.08;
   const ex = r * 0.36;
-  const expression: Expression = mood ? 'calm' : given;
-  const closed = expression === 'joy' || expression === 'calm';
+  const face: Face = mood === 'sad' ? 'sad' : mood === 'sleep' ? 'sleepy' : given;
+  const my = ey + r * 0.46; // mouth line
+  const brow = (_side: -1 | 1, d: string) => <path d={d} fill="none" {...line} strokeWidth={2.2} />;
+
+  const eyes = (() => {
+    const happyClosed = (cx: number, h = 6) => <path d={`M${cx - 6} ${ey + 1} q 6 ${-h} 12 0`} fill="none" {...line} strokeWidth={2.6} />; // ∩ laughing
+    const softClosed = (cx: number, h = 4) => <path d={`M${cx - 6} ${ey} q 6 ${h} 12 0`} fill="none" {...line} strokeWidth={2.6} />; // ∪ calm
+    const dot = (cx: number, rx = 3.4, ry = 4.2) => <g><ellipse cx={cx} cy={ey} rx={rx} ry={ry} fill={INK} /><circle cx={cx + 1.2} cy={ey - 1.5} r={rx * 0.33} fill="#fff" /></g>;
+    switch (face) {
+      case 'joy': return <>{softClosed(-ex, 6)}{softClosed(ex, 6)}</>;
+      case 'calm': return <>{softClosed(-ex)}{softClosed(ex)}</>;
+      case 'laugh': return <>{happyClosed(-ex)}{happyClosed(ex)}</>;
+      case 'proud': return <>{happyClosed(-ex, 4)}{happyClosed(ex, 4)}</>;
+      case 'sleepy': return <>{[-ex, ex].map((cx) => <g key={cx}><path d={`M${cx - 7} ${ey} h 14`} {...line} strokeWidth={2.6} /><path d={`M${cx - 6} ${ey + 1} q 6 4 12 0`} fill="none" stroke={INK} strokeWidth="1.4" opacity="0.5" /></g>)}</>;
+      case 'surprise': return <>{dot(-ex, 4.6, 5.6)}{dot(ex, 4.6, 5.6)}</>;
+      case 'cheeky': return <>{happyClosed(-ex, 5)}{dot(ex)}</>;
+      default: return <>{dot(-ex)}{dot(ex)}</>;
+    }
+  })();
+
+  const brows = (() => {
+    switch (face) {
+      case 'surprise': return <>{brow(-1, `M${-ex - 7} ${ey - 13} q 7 -6 14 0`)}{brow(1, `M${ex - 7} ${ey - 13} q 7 -6 14 0`)}</>;
+      case 'sad':
+      case 'worried': return <>{brow(-1, `M${-ex - 7} ${ey - 9} L ${-ex + 6} ${ey - 13}`)}{brow(1, `M${ex - 6} ${ey - 13} L ${ex + 7} ${ey - 9}`)}</>;
+      case 'focus': return <>{brow(-1, `M${-ex - 6} ${ey - 10} q 6 -4 12 -1`)}{brow(1, `M${ex - 6} ${ey - 11} q 6 -3 12 1`)}</>;
+      case 'cheeky': return brow(1, `M${ex - 6} ${ey - 12} q 6 -5 12 -2`);
+      default: return null;
+    }
+  })();
+
+  const mouth = (() => {
+    switch (face) {
+      case 'joy': return <path d={`M${-r * 0.3} ${ey + r * 0.4} Q 0 ${ey + r * 0.78} ${r * 0.3} ${ey + r * 0.4} Z`} fill="#8E2F2A" {...line} strokeWidth={2} />;
+      case 'laugh': return <g><path d={`M${-r * 0.36} ${ey + r * 0.36} Q 0 ${ey + r * 0.95} ${r * 0.36} ${ey + r * 0.36} Z`} fill="#8E2F2A" {...line} strokeWidth={2} /><path d={`M${-r * 0.14} ${ey + r * 0.66} Q 0 ${ey + r * 0.56} ${r * 0.14} ${ey + r * 0.66} Q 0 ${ey + r * 0.8} ${-r * 0.14} ${ey + r * 0.66} Z`} fill="#E86A6A" /></g>;
+      case 'surprise': return <ellipse cx="0" cy={my + 2} rx={r * 0.12} ry={r * 0.16} fill="#8E2F2A" {...line} strokeWidth={1.8} />;
+      case 'focus': return <ellipse cx="2" cy={my} rx="3.2" ry="2.6" fill="#8E2F2A" />;
+      case 'sleepy': return <ellipse cx="2" cy={my + 2} rx={r * 0.1} ry={r * 0.13} fill="#8E2F2A" opacity="0.85" />;
+      case 'sad': return <path d={`M${-r * 0.2} ${my + 8} q ${r * 0.2} ${-r * 0.18} ${r * 0.4} 0`} fill="none" {...line} strokeWidth={2.2} />;
+      case 'worried': return <path d={`M${-r * 0.24} ${my + 3} q ${r * 0.08} -5 ${r * 0.16} 0 t ${r * 0.16} 0 t ${r * 0.16} 0`} fill="none" {...line} strokeWidth={2} />;
+      case 'proud': return <path d={`M${-r * 0.26} ${ey + r * 0.42} q ${r * 0.26} ${r * 0.24} ${r * 0.52} 0`} fill="none" {...line} strokeWidth={2.4} />;
+      case 'cheeky': return <g><path d={`M${-r * 0.26} ${ey + r * 0.42} q ${r * 0.3} ${r * 0.22} ${r * 0.5} -4`} fill="none" {...line} strokeWidth={2.2} /><path d={`M${r * 0.02} ${ey + r * 0.5} q ${r * 0.1} ${r * 0.22} ${r * 0.2} 0`} fill="#E86A6A" {...line} strokeWidth={1.6} /></g>;
+      default: return <path d={`M${-r * 0.22} ${ey + r * 0.44} q ${r * 0.22} ${r * (face === 'calm' ? 0.12 : 0.2)} ${r * 0.44} 0`} fill="none" {...line} strokeWidth={2.2} />;
+    }
+  })();
+
+  const blush = face === 'laugh' || face === 'proud' || face === 'cheeky' ? 0.65 : face === 'sad' || face === 'sleepy' ? 0.3 : 0.45;
   return (
     <g>
       <circle cx={-r * 0.98} cy={y + r * 0.1} r={r * 0.17} fill={spec.skin} {...line} strokeWidth={2} />
@@ -217,36 +265,15 @@ function Head({ spec, b, expression: given, mood }: { spec: PortraitSpec; b: Bod
       {/* soft shading on the far side of the face, like a brush stroke */}
       <path d={`M${r * 0.55} ${y - r * 0.75} Q ${r * 1.05} ${y} ${r * 0.5} ${y + r * 0.85} Q ${r * 0.8} ${y} ${r * 0.55} ${y - r * 0.75} Z`} fill="#000" opacity="0.08" />
       <HairFront spec={spec} b={b} />
-      {/* cheeks */}
-      <circle cx={-r * 0.56} cy={ey + r * 0.3} r={r * 0.15} fill="#E86A6A" opacity="0.45" />
-      <circle cx={r * 0.56} cy={ey + r * 0.3} r={r * 0.15} fill="#E86A6A" opacity="0.45" />
-      {/* eyes */}
-      {closed ? (
-        <>
-          <path d={`M${-ex - 6} ${ey} q 6 ${expression === 'joy' ? 6 : 4} 12 0`} fill="none" {...line} strokeWidth={2.6} />
-          <path d={`M${ex - 6} ${ey} q 6 ${expression === 'joy' ? 6 : 4} 12 0`} fill="none" {...line} strokeWidth={2.6} />
-        </>
-      ) : (
-        <>
-          <ellipse cx={-ex} cy={ey} rx="3.4" ry="4.2" fill={INK} />
-          <ellipse cx={ex} cy={ey} rx="3.4" ry="4.2" fill={INK} />
-          <circle cx={-ex + 1.2} cy={ey - 1.5} r="1.1" fill="#fff" />
-          <circle cx={ex + 1.2} cy={ey - 1.5} r="1.1" fill="#fff" />
-          {expression === 'focus' && <><path d={`M${-ex - 6} ${ey - 10} q 6 -4 12 -1`} fill="none" {...line} strokeWidth={2} /><path d={`M${ex - 6} ${ey - 11} q 6 -3 12 1`} fill="none" {...line} strokeWidth={2} /></>}
-        </>
-      )}
+      <circle cx={-r * 0.56} cy={ey + r * 0.3} r={r * 0.15} fill="#E86A6A" opacity={blush} />
+      <circle cx={r * 0.56} cy={ey + r * 0.3} r={r * 0.15} fill="#E86A6A" opacity={blush} />
+      {eyes}
+      {brows}
       {spec.glasses && <g fill="none" stroke={INK} strokeWidth="2"><circle cx={-ex} cy={ey} r={r * 0.22} /><circle cx={ex} cy={ey} r={r * 0.22} /><path d={`M${-ex + r * 0.22} ${ey} h ${2 * ex - r * 0.44}`} /></g>}
-      {/* nose and mouth */}
       <path d={`M-2 ${ey + r * 0.24} q 3 3 6 0`} fill="none" {...line} strokeWidth={1.8} />
-      {expression === 'joy' ? (
-        <path d={`M${-r * 0.3} ${ey + r * 0.4} Q 0 ${ey + r * 0.78} ${r * 0.3} ${ey + r * 0.4} Z`} fill="#8E2F2A" {...line} strokeWidth={2} />
-      ) : expression === 'focus' ? (
-        <ellipse cx="2" cy={ey + r * 0.5} rx="3.2" ry="2.6" fill="#8E2F2A" />
-      ) : mood === 'sad' ? (
-        <path d={`M${-r * 0.2} ${ey + r * 0.56} q ${r * 0.2} ${-r * 0.16} ${r * 0.4} 0`} fill="none" {...line} strokeWidth={2.2} />
-      ) : (
-        <path d={`M${-r * 0.22} ${ey + r * 0.44} q ${r * 0.22} ${r * (expression === 'calm' ? 0.12 : 0.2)} ${r * 0.44} 0`} fill="none" {...line} strokeWidth={2.2} />
-      )}
+      {mouth}
+      {face === 'sad' && <path d={`M${-ex + 2} ${ey + 8} q -3 6 0 9 q 3 -3 0 -9 z`} fill="#8FC7E6" stroke={INK} strokeWidth="1.2" />}
+      {face === 'worried' && <path d={`M${r * 0.82} ${y - r * 0.5} q 4 6 0 9 q -4 -3 0 -9 z`} fill="#8FC7E6" stroke={INK} strokeWidth="1.2" />}
       {spec.beard && <path d={`M${-r * 0.6} ${y + r * 0.5} Q 0 ${y + r * 1.25} ${r * 0.6} ${y + r * 0.5} Q 0 ${y + r * 0.95} ${-r * 0.6} ${y + r * 0.5} Z`} fill={spec.hairColor} {...line} strokeWidth={1.8} />}
     </g>
   );

@@ -69,7 +69,7 @@ export function castFor(book: Book, i: number, prev?: CastMember[]): CastMember[
     if (k === lead && verb) pose = verb;
     else if (verb === 'run' || verb === 'dance' || verb === 'cheer') pose = verb; // everyone joins in
     else {
-      const byMood: Record<string, Pose> = { joy: 'cheer', focus: 'point', smile: 'wave', calm: 'stand' };
+      const byMood: Record<string, Pose> = { joy: 'cheer', focus: 'point', smile: 'wave', calm: 'stand', laugh: 'cheer', proud: 'wave', surprise: 'stand', worried: 'think', sad: 'sad', sleepy: 'stand', cheeky: 'dance' };
       pose = k === lead ? byMood[c.expression ?? 'calm'] : SIDE_POSES[(seed + k) % SIDE_POSES.length];
     }
     pose = fit(pose, c.who, page.scene);
