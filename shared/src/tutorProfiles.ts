@@ -36,7 +36,7 @@ export const TUTOR_PROFILES: Record<string, TutorProfile> = {
     ),
     approach: [L('Real situations from your own job, not textbook dialogues', 'Des situations tirées de votre travail, pas des dialogues de manuel'), L('Gentle, immediate corrections of pronunciation', 'Des corrections de prononciation douces et immédiates'), L('A short written recap after every session', 'Un court récapitulatif écrit après chaque séance')],
     experience: [
-      { role: L('Senior tutor, Conversation & Business French', 'Tutrice principale, conversation et français des affaires'), org: 'La Porte French Institute', place: 'Accra', from: 2022, text: L('Private sessions and the Business French course (A2–B2).', 'Séances individuelles et cours de français des affaires (A2–B2).') },
+      { role: L('Senior tutor, Conversation & Business French', 'Tutrice principale, conversation et français des affaires'), org: 'La Porte French Institute', place: 'Accra', from: 2022, text: L('Private sessions and the Business French courses at A2, B1 and B2.', 'Séances individuelles et cours de français des affaires des niveaux A2, B1 et B2.') },
       { role: L('Corporate language trainer', 'Formatrice linguistique en entreprise'), org: 'Alliance française d’Abidjan', place: 'Abidjan', from: 2019, to: 2022, text: L('French for banking and telecom teams.', 'Français pour des équipes de banque et de télécoms.') },
       { role: L('Sales team trainer', 'Formatrice d’équipes commerciales'), org: 'Groupe Rhône Distribution', place: 'Lyon', from: 2016, to: 2019, text: L('Communication and customer-service training.', 'Formation à la communication et au service client.') },
     ],
@@ -101,7 +101,7 @@ export const TUTOR_PROFILES: Record<string, TutorProfile> = {
     ),
     approach: [L('Role-plays of pitches and price negotiations', 'Jeux de rôle de présentations et de négociations de prix'), L('Vocabulary for contracts, invoices and logistics', 'Le vocabulaire des contrats, des factures et de la logistique'), L('Confidence first: we speak a lot', 'La confiance d’abord : on parle beaucoup')],
     experience: [
-      { role: L('Tutor, Entrepreneurship & Trade', 'Tuteur, entrepreneuriat et commerce'), org: 'La Porte French Institute', place: 'Accra', from: 2023, text: L('Private sessions and the Entrepreneurship course (A2–B2).', 'Séances individuelles et cours d’entrepreneuriat (A2–B2).') },
+      { role: L('Tutor, Entrepreneurship & Trade', 'Tuteur, entrepreneuriat et commerce'), org: 'La Porte French Institute', place: 'Accra', from: 2023, text: L('Private sessions and the A2 Entrepreneurship & Trade course.', 'Séances individuelles et cours d’entrepreneuriat de niveau A2.') },
       { role: L('Founder', 'Fondateur'), org: 'Côte Commerce SARL', place: 'Lomé · Accra', from: 2015, to: 2023, text: L('Import and distribution of household goods.', 'Import et distribution de produits ménagers.') },
     ],
     education: [{ title: L('Business school degree (Master in Management)', 'Diplôme d’école de commerce (Master en management)'), org: 'NEOMA Business School', year: 2014 }],

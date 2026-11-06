@@ -1,5 +1,6 @@
 import { COURSES, LEVEL_ORDER, TUTORS, TUTOR_PROFILES, type CefrLevel, type Proficiency, type Tutor } from '@laporte/shared';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { motion } from 'motion/react';
 import { Link, useParams } from 'react-router-dom';
 import { Avatar } from '../../components/3d/Portrait';
 import { EmptyState } from '../../components/ui/Controls';
@@ -100,18 +101,42 @@ const SECTIONS = [
 ] as const;
 
 /** Highlights the section tab of whatever part of the profile is on screen. */
-function useActiveSection(ids: readonly string[]) {
+/**
+ * Which section the reader is in, from the scroll position: the last section whose top has passed
+ * just under the sticky tabs. At the very bottom of the page the last section wins (it may be too
+ * short to reach the top). While a tab click scrolls the page, the clicked tab stays selected.
+ */
+function useActiveSection(ids: readonly string[], ready: boolean) {
   const [active, setActive] = useState(ids[0]);
+  const lockUntil = useRef(0);
+  const key = ids.join('|');
   useEffect(() => {
-    if (typeof IntersectionObserver === 'undefined') return;
-    const io = new IntersectionObserver((entries) => {
-      const seen = entries.filter((e) => e.isIntersecting).sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top)[0];
-      if (seen) setActive(seen.target.id.replace('tp-', ''));
-    }, { rootMargin: '-120px 0px -55% 0px' });
-    ids.forEach((id) => { const el = document.getElementById(`tp-${id}`); if (el) io.observe(el); });
-    return () => io.disconnect();
-  }, [ids]);
-  return active;
+    if (!ready) return;
+    let frame = 0;
+    const measure = () => {
+      frame = 0;
+      if (Date.now() < lockUntil.current) return;
+      const tabs = document.querySelector('.tp-tabs');
+      const line = (tabs ? tabs.getBoundingClientRect().bottom : 0) + 24;
+      const els = ids.map((id) => document.getElementById(`tp-${id}`)).filter((e): e is HTMLElement => !!e);
+      if (!els.length) return;
+      const scroller = document.scrollingElement ?? document.documentElement;
+      const atBottom = Math.ceil(window.innerHeight + window.scrollY) >= scroller.scrollHeight - 4;
+      let current = els[0];
+      for (const el of els) if (el.getBoundingClientRect().top <= line) current = el;
+      if (atBottom) current = els[els.length - 1];
+      setActive(current.id.replace('tp-', ''));
+    };
+    const onScroll = () => { if (!frame) frame = requestAnimationFrame(measure); };
+    measure();
+    // capture: catches scrolling of the window and of any scrolling layout container
+    document.addEventListener('scroll', onScroll, { capture: true, passive: true });
+    window.addEventListener('resize', onScroll);
+    return () => { document.removeEventListener('scroll', onScroll, { capture: true }); window.removeEventListener('resize', onScroll); cancelAnimationFrame(frame); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key, ready]);
+  const select = (id: string) => { setActive(id); lockUntil.current = Date.now() + 900; };
+  return [active, select] as const;
 }
 
 export function TutorProfilePage() {
@@ -120,7 +145,15 @@ export function TutorProfilePage() {
   const fr = lang === 'fr';
   const { learner, threads, userId } = useStore();
   const t = TUTORS.find((x) => x.id === id);
-  const active = useActiveSection(SECTIONS.map((s) => s.id));
+  const hasCourses = !!t && COURSES.some((c) => c.tutorId === t.id);
+  const sections = SECTIONS.filter((s) => s.id !== 'courses' || hasCourses);
+  const [active, select] = useActiveSection(sections.map((s) => s.id), !!t);
+  // On phones the tab strip scrolls sideways: keep the active tab in view (without moving the page).
+  useEffect(() => {
+    const nav = document.querySelector<HTMLElement>('.tp-tabs');
+    const tab = nav?.querySelector<HTMLElement>(`[data-id="${active}"]`);
+    if (nav && tab && nav.scrollWidth > nav.clientWidth) nav.scrollTo({ left: tab.offsetLeft - (nav.clientWidth - tab.offsetWidth) / 2, behavior: 'smooth' });
+  }, [active]);
   if (!t) return <div className="card"><EmptyState icon="user" title={fr ? 'Tuteur introuvable' : 'Tutor not found'} /><p style={{ textAlign: 'center' }}><Link to="/app/tutors" className="link">{fr ? 'Voir tous les tuteurs' : 'See all tutors'}</Link></p></div>;
   const p = TUTOR_PROFILES[t.id];
   const fits = teachesLevel(t, learner.level);
@@ -128,7 +161,7 @@ export function TutorProfilePage() {
   const courses = COURSES.filter((c) => c.tutorId === t.id);
   const others = TUTORS.filter((x) => x.id !== t.id);
   const first = t.name.split(' ')[0];
-  const jump = (sid: string) => document.getElementById(`tp-${sid}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  const jump = (sid: string) => { select(sid); document.getElementById(`tp-${sid}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' }); };
 
   const bookCard = (
     <section className="tp-book" aria-label={fr ? `Séances avec ${first}` : `Sessions with ${first}`}>
@@ -177,8 +210,11 @@ export function TutorProfilePage() {
 
       {/* ---------- Section tabs ---------- */}
       <nav className="tp-tabs" aria-label={fr ? 'Sections du profil' : 'Profile sections'}>
-        {SECTIONS.filter((s) => s.id !== 'courses' || courses.length).map((s) => (
-          <button key={s.id} type="button" className="tp-tab" aria-current={active === s.id ? 'true' : undefined} onClick={() => jump(s.id)}>{s[fr ? 'fr' : 'en']}</button>
+        {sections.map((s) => (
+          <button key={s.id} type="button" className="tp-tab" data-id={s.id} aria-current={active === s.id ? 'true' : undefined} onClick={() => jump(s.id)}>
+            {active === s.id && <motion.span layoutId="tp-tab-pill" className="tp-tab-pill" transition={{ type: 'spring', stiffness: 420, damping: 38 }} />}
+            <span className="tp-tab-label">{s[fr ? 'fr' : 'en']}</span>
+          </button>
         ))}
       </nav>
 

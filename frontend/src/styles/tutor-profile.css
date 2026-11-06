@@ -136,3 +136,9 @@
   .tp-langs li .tiny { grid-column: 1 / -1; margin-top: -6px; }
 }
 @media (prefers-reduced-motion: reduce) { .tp-tab, .tp-course-tile, .tp-other { transition: none; } }
+
+/* Tabs: one maroon pill that slides to the section being read */
+.tp-tab { position: relative; isolation: isolate; }
+.tp-tab[aria-current] { background: none; color: #fff; }
+.tp-tab-pill { position: absolute; inset: 0; z-index: -1; border-radius: 999px; background: var(--burgundy); }
+.tp-tab-label { position: relative; }
