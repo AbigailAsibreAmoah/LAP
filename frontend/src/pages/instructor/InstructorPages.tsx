@@ -1,3 +1,4 @@
+import { TimeOffCard } from '../../features/presence/PresenceUI';
 import { COURSE_AREAS, DEMO_TUTOR_ID, LEARNERS, TUTORS } from '@laporte/shared';
 import { AnimatePresence, motion } from 'motion/react';
 import { useState } from 'react';
@@ -171,6 +172,8 @@ export function AvailabilityPage() {
   return (
     <>
       <PageHead title={t('instr.availability')} sub={t('instr.availabilitySub')} />
+      <TimeOffCard tutorId={tutor.id} />
+      <div style={{ height: 16 }} />
       <div className="card" style={{ overflowX: 'auto' }}>
         <div style={{ display: 'grid', gridTemplateColumns: `70px repeat(${days.length}, minmax(80px, 1fr))`, gap: 6, minWidth: 560 }}>
           <span />

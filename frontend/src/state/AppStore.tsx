@@ -100,6 +100,24 @@ function useStoreValue() {
     };
   }, []);
 
+  // Stay up to date: when the tab comes back into view, and every 2 minutes while it's visible,
+  // re-read the server snapshot (bookings moved by a tutor or admin, new messages, etc.).
+  useEffect(() => {
+    let busy = false;
+    const resync = () => {
+      if (busy || document.visibilityState !== 'visible' || !serverRef.current) return;
+      busy = true;
+      api.snapshot(userRef.current?.id)
+        .then((snap) => { if (snap) setServer(snap); })
+        .catch(() => undefined)
+        .finally(() => { busy = false; });
+    };
+    const onVisible = () => { if (document.visibilityState === 'visible') resync(); };
+    document.addEventListener('visibilitychange', onVisible);
+    const timer = window.setInterval(resync, 120_000);
+    return () => { document.removeEventListener('visibilitychange', onVisible); window.clearInterval(timer); };
+  }, []);
+
   // Cache the last-known state so reloads render instantly; the API snapshot then reconciles it.
   useEffect(() => {
     writeLocal(SERVER_KEY, JSON.stringify(server));

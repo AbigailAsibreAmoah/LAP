@@ -1,5 +1,5 @@
 import type { ErrorRequestHandler, NextFunction, Request, RequestHandler, Response } from 'express';
-import { ContentError, DEMO_LEARNER_ID, type Role } from '@laporte/shared';
+import { ContentError, DEMO_LEARNER_ID, PresenceError, type Role } from '@laporte/shared';
 import { MulterError } from 'multer';
 import { ZodError, type ZodTypeAny } from 'zod';
 import { AppError } from '../utils/errors';
@@ -63,7 +63,7 @@ export const errorHandler: ErrorRequestHandler = (err, _req, res, _next) => {
   if (err instanceof AppError) {
     return res.status(err.status).json({ error: { code: err.code, message: err.message, details: err.details } });
   }
-  if (err instanceof ContentError) {
+  if (err instanceof ContentError || err instanceof PresenceError) {
     return res.status(err.status).json({ error: { code: err.code, message: err.message } });
   }
   if (err instanceof MulterError) {

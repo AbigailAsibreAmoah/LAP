@@ -5,6 +5,9 @@ import {
   NOTIFICATIONS,
   PAYMENTS,
   VOCABULARY,
+  nowIso,
+  seedPresence,
+  type PresenceRecord,
 } from '@laporte/shared';
 
 /**
@@ -20,6 +23,7 @@ function seed() {
     notifications: structuredClone(NOTIFICATIONS),
     threads: structuredClone(MESSAGE_THREADS),
     vocabulary: structuredClone(VOCABULARY),
+    presence: seedPresence(nowIso()) as Record<string, PresenceRecord>,
   };
 }
 

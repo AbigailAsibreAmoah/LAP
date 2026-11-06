@@ -1,4 +1,5 @@
-import { canReschedule, cancellationOutcome, nowIso, missedSessions, sessionCost, type Booking, type SessionPurpose } from '@laporte/shared';
+import { canReschedule, cancellationOutcome, isOutOfOffice, nowIso, missedSessions, sessionCost, type Booking, type SessionPurpose } from '@laporte/shared';
+import { presenceService } from './presenceService';
 import { contentStore } from '../repositories/contentStore';
 import { bookingRepository } from '../repositories/bookingRepository';
 import { catalogRepository } from '../repositories/catalogRepository';
@@ -26,7 +27,9 @@ export async function availability(tutorId: string, date: string) {
     const end = new Date(new Date(start).getTime() + PRIVATE_LESSON_MINUTES * 60_000).toISOString();
     const booked = Boolean(bookingRepository.activeForTutorAt(tutorId, start));
     const onCalendar = busy.some((b) => b.start < end && b.end > start);
-    return { time, start, available: !booked && !onCalendar, ...(onCalendar && !booked ? { reason: 'calendar' as const } : {}) };
+    // Out of office: no bookings during the tutor's time off.
+    const away = isOutOfOffice(presenceService.record(tutorId), start);
+    return { time, start, available: !booked && !onCalendar && !away, ...(away && !booked ? { reason: 'out-of-office' as const } : onCalendar && !booked ? { reason: 'calendar' as const } : {}) };
   });
 }
 
@@ -38,6 +41,7 @@ export async function createBooking(input: { learnerId: string; tutorId: string;
 
   const slot = (await availability(tutor.id, input.start.slice(0, 10))).find((s) => s.start === input.start);
   if (!slot) throw new AppError(422, 'slot_unavailable', 'The tutor does not teach at this time.');
+  if (!slot.available && 'reason' in slot && slot.reason === 'out-of-office') throw new AppError(409, 'tutor_out_of_office', 'This tutor is out of office on that date. Please choose another date or tutor.');
   if (!slot.available) throw new AppError(409, 'slot_taken', 'This time has just been booked. Please choose another.');
 
   // Catch-ups replace recordings: only for a group session the learner actually missed.

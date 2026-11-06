@@ -11,6 +11,8 @@ import { useRouteFocus } from '../hooks/useRouteFocus';
 import { ClassmateChat } from '../features/community/ClassmateChat';
 import { useUnread } from '../features/messages/unread';
 import { DesktopNoteHost } from '../features/expressions/DailyNote';
+import { usePresenceSync } from '../features/presence/presenceClient';
+import { StatusMenu } from '../features/presence/PresenceUI';
 import { readLocal, removeLocal, writeLocal } from '../utils/storage';
 import { START_PENDING_KEY } from '../pages/onboarding/StartPage';
 import { useI18n } from '../i18n/I18nProvider';
@@ -94,6 +96,8 @@ export const ROLE_HOME: Record<Role, string> = { learner: '/app', instructor: '/
 export function AppLayout({ role }: { role: Role }) {
   const { t, lang } = useI18n();
   const store = useStore();
+  // Tutor statuses stay current everywhere; tutors also send the heartbeat behind Online / On break / Offline.
+  usePresenceSync(store.user.id, store.role, store.bookings);
 
   // Entering a workspace URL directly selects that demo role.
   useEffect(() => {
@@ -216,6 +220,7 @@ export function AppLayout({ role }: { role: Role }) {
               <RoleSwitch />
               <LanguageSwitch />
             </div>
+            {role === 'instructor' && store.role === 'instructor' && <StatusMenu tutorId={store.user.id} />}
             {role === 'learner' && (
               <Link to="/app/notifications" className="round-btn" aria-label={`${t('app.notifications')} (${unread})`}>
                 <Icon name="bell" size={18} />

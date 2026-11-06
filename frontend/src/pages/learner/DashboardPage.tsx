@@ -1,6 +1,9 @@
-import { COURSES, leaderboard, LEARNER_WEEKLY_MINUTES, levelFor, missedSessions, sessionCost, SPEAKING_SCENARIOS, TUTORS, type CefrLevel, type LessonKind, type QuestId, dueToday, reviewStreak, canStudy } from '@laporte/shared';
+import { COURSES, leaderboard, LEARNER_WEEKLY_MINUTES, levelFor, missedSessions, sessionCost, SPEAKING_SCENARIOS, TUTORS, type Booking, type CefrLevel, type LessonKind, type QuestId, dueToday, reviewStreak, canStudy } from '@laporte/shared';
 import { AnimatePresence, motion } from 'motion/react';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { useNow } from '../../utils/useNow';
+import { usePresence } from '../../features/presence/presenceClient';
+import { PresenceBadge, presenceHint, TutorAvatar } from '../../features/presence/PresenceUI';
 import { Link } from 'react-router-dom';
 import { Avatar } from '../../components/3d/Portrait';
 import { ProgressRing } from '../../components/3d/Depth';
@@ -112,16 +115,64 @@ function frenchGreeting(hour: number) {
   return hour < 12 ? 'Bonjour' : hour < 18 ? 'Bon après-midi' : 'Bonsoir';
 }
 
-/** Sunday → Thursday around the demo "today", as in a compact weekly planner. */
-function weekDays() {
-  const today = new Date(nowIso());
+/** Monday → Sunday of the week containing now, so today is always in the strip. */
+function weekDays(now: string) {
+  const today = new Date(now);
   const start = new Date(today);
-  start.setUTCDate(today.getUTCDate() - today.getUTCDay());
-  return Array.from({ length: 5 }, (_, i) => {
+  start.setUTCDate(today.getUTCDate() - ((today.getUTCDay() + 6) % 7));
+  return Array.from({ length: 7 }, (_, i) => {
     const d = new Date(start);
     d.setUTCDate(start.getUTCDate() + i);
     return d.toISOString().slice(0, 10);
   });
+}
+
+/** The next session: when, with whom and whether they're around, a live countdown, and Join
+ *  (open from 10 minutes before the start until the end). Warns if the tutor will be away. */
+function NextSession({ booking, now }: { booking: Booking; now: string }) {
+  const { t, lang } = useI18n();
+  const fr = lang === 'fr';
+  const tutor = TUTORS.find((tu) => tu.id === booking.tutorId)!;
+  const presence = usePresence(tutor.id);
+  const start = Date.parse(booking.start), at = Date.parse(now), end = start + booking.durationMin * 60_000;
+  const mins = Math.round((start - at) / 60_000);
+  const live = at >= start && at < end;
+  const joinable = at >= start - 10 * 60_000 && at < end;
+  const when = live
+    ? (fr ? 'En cours' : 'Happening now')
+    : mins < 60 ? (fr ? `Dans ${Math.max(1, mins)} min` : `In ${Math.max(1, mins)} min`)
+    : mins < 60 * 12 ? (fr ? `Dans ${Math.round(mins / 60)} h` : `In ${Math.round(mins / 60)} h`) : null;
+  const awayThen = presence?.status === 'out-of-office' && !!presence.until && start < Date.parse(presence.until);
+  const first = tutor.name.split(' ')[0];
+  const url = booking.meeting?.joinUrl;
+  return (
+    <div className="next-live">
+      <div className="row" style={{ flexWrap: 'nowrap', ['--gap' as string]: '12px' }}>
+        <TutorAvatar tutorId={tutor.id} spec={tutor.portrait} size={44} />
+        <div style={{ minWidth: 0 }}>
+          <div className="tiny muted">{t('dash.nextLive')}{when && <> · <strong className="next-when">{when}</strong></>}</div>
+          <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--navy)' }}>{relativeDay(booking.start, lang, t)} · {formatTime(booking.start, lang)}</div>
+          <div className="tiny muted">{t('common.with')} {tutor.name} · {booking.durationMin} {t('common.min')}</div>
+        </div>
+      </div>
+      <div className="pz-line">
+        <PresenceBadge tutorId={tutor.id} />
+        <span className="pz-hint">{presenceHint(presence, lang)}</span>
+      </div>
+      {awayThen && (
+        <div className="pz-warn" role="note">
+          <Icon name="calendar" size={15} />
+          <span>{fr ? `${first} sera absent·e à cette date. ` : `${first} will be out of office then. `}<Link to="/app/lessons" className="link small">{fr ? 'Reprogrammer' : 'Reschedule'}</Link></span>
+        </div>
+      )}
+      <div className="row between" style={{ marginTop: 10 }}>
+        <span className="tiny muted" style={{ maxWidth: '22ch' }}>{url ? (joinable ? (fr ? 'Le lien est ouvert.' : 'The link is open.') : fr ? 'Le lien s’ouvre 10 min avant.' : 'The link opens 10 min before.') : t('demo.teams')}</span>
+        {url && joinable
+          ? <a className="btn btn-primary btn-sm" href={url} target="_blank" rel="noreferrer"><Icon name="meet" size={15} /> {t('dash.join')}</a>
+          : <button className="btn btn-secondary btn-sm" disabled><Icon name="meet" size={15} /> {t('dash.join')}</button>}
+      </div>
+    </div>
+  );
 }
 
 export function DashboardPage() {
@@ -129,9 +180,13 @@ export function DashboardPage() {
   const fr = lang === 'fr';
   const store = useStore();
   const { learner, bookings, milestones, submissions, completedScenarios } = store;
+  // Re-render every minute (and on returning to the tab) so "today", times and Join stay current.
+  const now = useNow();
+  const endOf = (b: { start: string; durationMin: number }) => new Date(Date.parse(b.start) + b.durationMin * 60_000).toISOString();
   const { RESUME_LESSON, RESUME_COURSE, hasAssignment } = pickResume(store);
+  // Next session: the first confirmed one that hasn't ended (it stays here while it's happening).
   const upcoming = bookings
-    .filter((b) => b.learnerId === learner.id && b.status === 'confirmed' && isUpcoming(b.start))
+    .filter((b) => b.learnerId === learner.id && b.status === 'confirmed' && endOf(b) > now)
     .sort((a, b) => a.start.localeCompare(b.start));
   const next = upcoming[0];
   const nextTutor = next && TUTORS.find((tu) => tu.id === next.tutorId)!;
@@ -166,9 +221,16 @@ export function DashboardPage() {
   const tiles = courseLessons.slice(at, at + 3);
 
   // Week planner, built from real bookings and today's due work.
-  const days = weekDays();
-  const todayKey = nowIso().slice(0, 10);
+  const todayKey = now.slice(0, 10);
+  const days = weekDays(now);
   const [day, setDay] = useState(todayKey);
+  // A new day: move the selection to it (unless the learner is looking at another day).
+  const lastToday = useRef(todayKey);
+  useEffect(() => {
+    if (lastToday.current === todayKey) return;
+    setDay((d) => (d === lastToday.current ? todayKey : d));
+    lastToday.current = todayKey;
+  }, [todayKey]);
   type Ev = { id: string; icon: IconName; tone: Tone; title: string; meta: string; to: string; fr?: boolean };
   const eventsFor = (key: string): Ev[] => {
     const list: Ev[] = bookings
@@ -182,7 +244,7 @@ export function DashboardPage() {
           icon: live ? 'meet' : 'video',
           tone: b.status === 'completed' ? 'green' : live ? 'navy' : 'burgundy',
           title: b.topic,
-          meta: `${formatTime(b.start, lang)} · ${tu.name} · ${b.durationMin} ${t('common.min')}${b.status === 'completed' ? (fr ? ' · terminée' : ' · done') : ''}`,
+          meta: `${formatTime(b.start, lang)} · ${tu.name} · ${b.durationMin} ${t('common.min')}${b.status === 'completed' ? (fr ? ' · terminée' : ' · done') : b.start <= now && now < endOf(b) ? (fr ? ' · en cours' : ' · happening now') : endOf(b) <= now ? (fr ? ' · terminée' : ' · ended') : ''}`,
           to: '/app/lessons',
           fr: true,
         };
@@ -366,7 +428,7 @@ export function DashboardPage() {
               const date = new Date(`${d}T12:00:00Z`);
               const active = d === day;
               return (
-                <button key={d} type="button" className="week-day" aria-pressed={active} onClick={() => setDay(d)}>
+                <button key={d} type="button" className="week-day" aria-pressed={active} data-today={d === todayKey || undefined} aria-label={d === todayKey ? `${fr ? 'Aujourd’hui' : 'Today'}, ${date.toLocaleDateString(fr ? 'fr-FR' : 'en-GB', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' })}` : undefined} onClick={() => setDay(d)}>
                   {active && <motion.span layoutId="week-pill" className="week-pill" transition={spring.snappy} />}
                   <span>{date.toLocaleDateString(fr ? 'fr-FR' : 'en-GB', { weekday: 'short', timeZone: 'UTC' }).replace('.', '')}</span>
                   <span className="week-day-num num">{date.getUTCDate()}</span>
@@ -397,24 +459,7 @@ export function DashboardPage() {
               )}
             </motion.ul>
           </AnimatePresence>
-          {next && nextTutor && (
-            <div className="next-live">
-              <div className="row" style={{ flexWrap: 'nowrap', ['--gap' as string]: '12px' }}>
-                <Avatar spec={nextTutor.portrait} size={40} />
-                <div style={{ minWidth: 0 }}>
-                  <div className="tiny muted">{t('dash.nextLive')}</div>
-                  <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--navy)' }}>{relativeDay(next.start, lang, t)} · {formatTime(next.start, lang)}</div>
-                  <div className="tiny muted">{t('common.with')} {nextTutor.name} · {next.durationMin} {t('common.min')}</div>
-                </div>
-              </div>
-              <div className="row between" style={{ marginTop: 10 }}>
-                <span className="tiny muted" style={{ maxWidth: '22ch' }}>{t('demo.teams')}</span>
-                <button className="btn btn-secondary btn-sm" disabled>
-                  <Icon name="meet" size={15} /> {t('dash.join')}
-                </button>
-              </div>
-            </div>
-          )}
+          {next && nextTutor && <NextSession booking={next} now={now} />}
         </motion.section>
 
         {/* Milestones as goals to work towards */}

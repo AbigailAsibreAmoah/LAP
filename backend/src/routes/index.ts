@@ -18,6 +18,7 @@ import { kidsService, liveGameService } from '../services/kidsService';
 import { placementService } from '../services/placementService';
 import { authService } from '../services/authService';
 import { runCafe } from '../services/cafeService';
+import { presenceService } from '../services/presenceService';
 import {
   addVocabularySchema,
   assignPackSchema,
@@ -31,6 +32,8 @@ import {
   receiptPreferenceSchema,
   staffThreadSchema,
   availabilityQuerySchema,
+  presenceChangeSchema,
+  heartbeatSchema,
   cancelBookingSchema,
   claimQuestSchema,
   completeLessonSchema,
@@ -94,6 +97,11 @@ api.post('/me/vocabulary/:id/toggle', requireRole('learner'), learnerController.
 api.get('/me/payments', requireRole('learner'), learnerController.payments);
 
 // Bookings
+// Tutor presence: everyone can see it; only the tutor changes their own.
+api.get('/presence', (_req, res) => res.json(presenceService.all()));
+api.get('/me/presence', requireRole('instructor'), (req, res) => res.json(presenceService.mine(req.demoUser.id)));
+api.put('/me/presence', requireRole('instructor'), validateBody(presenceChangeSchema), (req, res) => res.json(presenceService.set(req.demoUser.id, req.body)));
+api.post('/me/presence/heartbeat', requireRole('instructor'), validateBody(heartbeatSchema), (req, res) => res.json(presenceService.beat(req.demoUser.id, req.body.active)));
 api.get('/tutors/:tutorId/availability', validateQuery(availabilityQuerySchema), asyncHandler(bookingController.availability));
 api.get('/bookings', bookingController.mine);
 api.post('/bookings', requireRole('learner'), validateBody(createBookingSchema), asyncHandler(bookingController.create));

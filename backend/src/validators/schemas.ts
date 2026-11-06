@@ -12,6 +12,16 @@ export const createBookingSchema = z.object({
   missedSessionId: z.string().max(40).optional(),
 });
 
+const oooReason = z.enum(['holiday', 'training', 'sick', 'personal', 'exams']);
+export const presenceChangeSchema = z.discriminatedUnion('kind', [
+  z.object({ kind: z.literal('online') }),
+  z.object({ kind: z.literal('break'), minutes: z.union([z.literal(15), z.literal(30), z.literal(60), z.null()]) }),
+  z.object({ kind: z.literal('offline') }),
+  z.object({ kind: z.literal('out-of-office'), from: z.string().datetime(), until: z.string().datetime(), reason: oooReason }),
+  z.object({ kind: z.literal('cancel-time-off'), id: z.string().min(1).max(60) }),
+]);
+export const heartbeatSchema = z.object({ active: z.boolean() });
+
 export const rescheduleBookingSchema = z.object({ start: isoStart });
 
 export const availabilityQuerySchema = z.object({
