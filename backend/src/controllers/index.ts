@@ -10,7 +10,7 @@ import { vocabularyRepository } from '../repositories/engagementRepository';
 import { availability, cancelBooking, createBooking, rescheduleBooking, reviewCancellation } from '../services/bookingService';
 import { contentStore } from '../repositories/contentStore';
 import { adminService, messagingService, notificationService, speakingService, vocabularyService } from '../services/engagementService';
-import { initializePayment, verifyPayment } from '../services/paymentService';
+import { emailReceipt, initializePayment, verifyPayment } from '../services/paymentService';
 import { notFound } from '../utils/errors';
 
 export const systemController = {
@@ -76,6 +76,18 @@ export const paymentController = {
   initialize: async (req: Request, res: Response) =>
     res.status(201).json(await initializePayment({ learnerId: req.demoUser.id, ...req.body })),
   verify: async (req: Request, res: Response) => res.json(await verifyPayment(req.params.reference)),
+  /** Emails the receipt again: the learner it belongs to, or an admin. */
+  emailReceipt: async (req: Request, res: Response) => {
+    const payment = paymentRepository.byReference(req.params.reference);
+    if (!payment || (req.demoUser.role !== 'admin' && payment.learnerId !== req.demoUser.id)) throw notFound('Payment');
+    res.json(await emailReceipt(payment));
+  },
+  /** Turn automatic receipt emails on or off. */
+  receiptPreference: (req: Request, res: Response) => {
+    const learner = learnerRepository.setReceiptEmails(req.demoUser.id, req.body.receiptEmails);
+    if (!learner) throw notFound('Learner');
+    res.json(learner);
+  },
 };
 
 export const speakingController = {
@@ -93,4 +105,16 @@ export const engagementController = {
 
 export const adminController = {
   overview: (_req: Request, res: Response) => res.json(adminService.overview()),
+  /** Give or remove private-session credits (e.g. a goodwill credit, or a correction). */
+  credits: (req: Request, res: Response) => {
+    const learner = learnerRepository.byId(req.params.id);
+    if (!learner) throw notFound('Learner');
+    res.json({ learner: learnerRepository.adjustCredits(learner.id, req.body.delta) });
+  },
+  /** Open the learner's courses up to a level (only upwards from their placement level). */
+  unlock: (req: Request, res: Response) => {
+    const learner = learnerRepository.byId(req.params.id);
+    if (!learner) throw notFound('Learner');
+    res.json({ learner: learnerRepository.setUnlocked(learner.id, req.body.level) });
+  },
 };

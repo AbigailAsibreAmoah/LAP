@@ -14,6 +14,17 @@ export const learnerRepository = {
     if (learner) learner.credits = Math.max(0, learner.credits + delta);
     return learner;
   },
+  /** Opens levels up to `level` for this learner (e.g. a level paid for by their employer). */
+  setUnlocked(id: string, level: Learner['level']) {
+    const learner = store.learners.find((l) => l.id === id);
+    if (learner) learner.unlockedLevel = level;
+    return learner;
+  },
+  setReceiptEmails(id: string, on: boolean) {
+    const learner = store.learners.find((l) => l.id === id);
+    if (learner) learner.receiptEmails = on;
+    return learner;
+  },
   setPlan(id: string, planId: string) {
     const learner = store.learners.find((l) => l.id === id);
     if (learner) learner.planId = planId;

@@ -28,6 +28,7 @@ export const initializePaymentSchema = z.object({
 });
 
 export const postMessageSchema = z.object({ body: z.string().trim().min(1).max(2000) });
+export const receiptPreferenceSchema = z.object({ receiptEmails: z.boolean() });
 
 export const addVocabularySchema = z.object({
   fr: z.string().trim().min(1).max(200),
@@ -145,6 +146,8 @@ export const liveCreateSchema = z.object({ unitId: z.string().min(1) });
 export const liveJoinSchema = z.object({ kidId: z.string().min(1) });
 export const liveAnswerSchema = z.object({ playerId: z.string().min(1), index: z.number().int().min(0).max(50), choice: z.number().int().min(0).max(5) });
 export const resolveReportSchema = z.object({ outcome: z.enum(['actioned', 'dismissed']) });
+export const adminCreditsSchema = z.object({ delta: z.number().int().min(-20).max(20).refine((n) => n !== 0, 'Choose a change'), reason: z.string().trim().min(2).max(200) });
+export const adminUnlockSchema = z.object({ level: z.enum(['A2', 'B1', 'B2', 'C1', 'C2']) });
 export const feedbackSchema = z.object({ feedback: z.string().trim().min(1).max(5000) });
 export const completeLessonSchema = z.object({
   quizScore: z.object({ correct: z.number().int().min(0), total: z.number().int().min(0) }).optional(),
@@ -175,6 +178,7 @@ export const mediaMetaSchema = z.object({
 export const followSchema = z.object({ learnerId: z.string().min(1), on: z.boolean() });
 export const leaderboardVisibilitySchema = z.object({ visible: z.boolean() });
 export const startThreadSchema = z.object({ participantId: z.string().min(1), body: z.string().trim().min(1).max(2000) });
+export const staffThreadSchema = z.object({ participantId: z.string().min(1), subject: z.string().trim().min(2).max(140), body: z.string().trim().min(1).max(2000) });
 export const cohortSchema = z.object({
   name: localized,
   courseId: z.string().min(1),

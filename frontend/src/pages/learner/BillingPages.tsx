@@ -7,6 +7,8 @@ import { spring } from '../../components/animations/motion';
 import { DemoTag, EmptyState, FocusTitle, Notice, Segmented, StatusBadge } from '../../components/ui/Controls';
 import { Icon } from '../../components/ui/Icon';
 import { LevelAccessBanner } from '../../features/access/LevelAccess';
+import { ReceiptModal } from '../../features/billing/Receipt';
+import { useToast } from '../../components/ui/Toasts';
 import { useI18n } from '../../i18n/I18nProvider';
 import { useStore } from '../../state/AppStore';
 import { formatDate, formatGhs } from '../../utils/format';
@@ -15,7 +17,9 @@ import { PageHead } from './LearnerPages';
 
 export function BillingPage() {
   const { t, l, lang } = useI18n();
-  const { learner, payments, milestones } = useStore();
+  const { learner, payments, milestones, actions } = useStore();
+  const toast = useToast();
+  const [receiptOf, setReceiptOf] = useState<Payment | null>(null);
   const plan = MEMBERSHIP_PLANS.find((p) => p.id === learner.planId)!;
   const mine = payments.filter((p) => p.learnerId === learner.id).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   const [showPlans, setShowPlans] = useState(false);
@@ -70,11 +74,17 @@ export function BillingPage() {
       </AnimatePresence>
 
       <section>
-        <h2 className="h3" style={{ marginBottom: 12 }}>{t('billing.history')}</h2>
+        <div className="row between" style={{ marginBottom: 12 }}>
+          <h2 className="h3">{t('billing.history')}</h2>
+          <label className="kid-toggle receipt-pref">
+            <span><Icon name="mail" size={15} /> {lang === 'fr' ? 'M’envoyer un reçu par e-mail après chaque paiement' : 'Email me a receipt after each payment'}</span>
+            <input type="checkbox" checked={learner.receiptEmails !== false} onChange={(e) => { const on = e.target.checked; actions.receipts.setAutoEmail(on).then(() => toast(on ? (lang === 'fr' ? 'Les reçus vous seront envoyés par e-mail' : 'Receipts will be emailed to you') : lang === 'fr' ? 'Plus de reçus par e-mail (toujours disponibles ici)' : 'No more receipt emails (still available here)')).catch((err: unknown) => toast(err instanceof Error ? err.message : String(err))); }} />
+          </label>
+        </div>
         <div className="table-wrap">
           <table className="table">
             <thead>
-              <tr><th>{t('billing.date')}</th><th>{t('billing.reference')}</th><th>{lang === 'fr' ? 'Formule' : 'Plan'}</th><th>{t('billing.method')}</th><th>{t('billing.amount')}</th><th>{t('billing.status')}</th></tr>
+              <tr><th>{t('billing.date')}</th><th>{t('billing.reference')}</th><th>{lang === 'fr' ? 'Formule' : 'Plan'}</th><th>{t('billing.method')}</th><th>{t('billing.amount')}</th><th>{t('billing.status')}</th><th><span className="sr-only">{lang === 'fr' ? 'Reçu' : 'Receipt'}</span></th></tr>
             </thead>
             <tbody>
               {mine.map((p) => (
@@ -85,6 +95,7 @@ export function BillingPage() {
                   <td>{p.provider}</td>
                   <td className="num" style={{ fontWeight: 600 }}>{formatGhs(p.amountGhs, lang)}</td>
                   <td><PaymentStatus p={p} /></td>
+                  <td>{p.status === 'success' && <button className="btn btn-ghost btn-sm" onClick={() => setReceiptOf(p)}><Icon name="file" size={14} /> {lang === 'fr' ? 'Reçu' : 'Receipt'}</button>}</td>
                 </tr>
               ))}
             </tbody>
@@ -92,6 +103,7 @@ export function BillingPage() {
           {!mine.length && <EmptyState icon="card" title={lang === 'fr' ? 'Aucun paiement pour l’instant' : 'No payments yet'} />}
         </div>
         <p className="tiny muted" style={{ marginTop: 10 }}>{t('checkout.noCharge')}</p>
+        <ReceiptModal payment={receiptOf} learner={learner} onClose={() => setReceiptOf(null)} />
       </section>
     </div>
   );
@@ -107,6 +119,7 @@ type Stage = 'form' | 'processing' | 'success' | 'failed';
 const NETWORKS = ['MTN MoMo', 'Telecel Cash', 'AT Money'];
 
 export function CheckoutPage() {
+  const [showReceipt, setShowReceipt] = useState(false);
   const { planId } = useParams();
   const { t, l, lang } = useI18n();
   const { actions, learner, content } = useStore();
@@ -240,6 +253,7 @@ export function CheckoutPage() {
                 <div className="row" style={{ justifyContent: 'center' }}>
                   {stage === 'success' ? (
                     <>
+                      {payment && <button type="button" className="btn btn-secondary" onClick={() => setShowReceipt(true)}><Icon name="file" size={15} /> {lang === 'fr' ? 'Voir le reçu' : 'View receipt'}</button>}
                       <Link to="/app" className="btn btn-primary">{t('checkout.done')}</Link>
                       <Link to="/app/book" className="btn btn-secondary">{t('app.book')}</Link>
                     </>
@@ -263,6 +277,7 @@ export function CheckoutPage() {
           <p className="tiny muted">{t('demo.pricing')}</p>
         </aside>
       </div>
+      <ReceiptModal payment={showReceipt ? payment ?? null : null} learner={learner} onClose={() => setShowReceipt(false)} />
     </div>
   );
 }

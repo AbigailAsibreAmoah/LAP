@@ -13,7 +13,7 @@ import {
 import { asyncHandler, requireRole, validateBody, validateQuery } from '../middleware';
 import { contentController, upload } from '../controllers/contentController';
 import { communityService, contentService } from '../services/contentService';
-import { classmateMessaging } from '../services/engagementService';
+import { classmateMessaging, staffMessaging } from '../services/engagementService';
 import { kidsService, liveGameService } from '../services/kidsService';
 import { placementService } from '../services/placementService';
 import { authService } from '../services/authService';
@@ -28,6 +28,8 @@ import {
   groupAssignmentSchema,
   leaderboardVisibilitySchema,
   startThreadSchema,
+  receiptPreferenceSchema,
+  staffThreadSchema,
   availabilityQuerySchema,
   cancelBookingSchema,
   claimQuestSchema,
@@ -58,6 +60,8 @@ import {
   liveAnswerSchema,
   reviewCancellationSchema,
   transitionSchema,
+  adminCreditsSchema,
+  adminUnlockSchema,
   updateLessonSchema,
 } from '../validators/schemas';
 
@@ -100,6 +104,8 @@ api.post('/bookings/:id/reschedule', requireRole('learner'), validateBody(resche
 // Payments (simulated Paystack)
 api.post('/payments/initialize', requireRole('learner'), validateBody(initializePaymentSchema), asyncHandler(paymentController.initialize));
 api.post('/payments/:reference/verify', asyncHandler(paymentController.verify));
+api.post('/payments/:reference/receipt/email', requireRole('learner', 'admin'), asyncHandler(paymentController.emailReceipt));
+api.put('/me/receipt-emails', requireRole('learner'), validateBody(receiptPreferenceSchema), paymentController.receiptPreference);
 
 // Speaking Studio
 api.get('/speaking/scenarios', speakingController.scenarios);
@@ -113,6 +119,8 @@ api.post('/threads/:id/messages', validateBody(postMessageSchema), engagementCon
 
 // Administration
 api.get('/admin/overview', requireRole('admin'), adminController.overview);
+api.post('/admin/learners/:id/credits', requireRole('admin'), validateBody(adminCreditsSchema), adminController.credits);
+api.post('/admin/learners/:id/unlock', requireRole('admin'), validateBody(adminUnlockSchema), adminController.unlock);
 
 // Content library (role rules are enforced in the shared content operations)
 const staff = requireRole('instructor', 'admin');
@@ -169,3 +177,4 @@ api.post('/me/vocabulary/:id/review', requireRole('learner'), validateBody(revie
 api.post('/reports', validateBody(reportSchema), (req, res) => res.status(201).json(contentService.reportMessage(req.demoUser, req.body)));
 api.post('/admin/reports/:id/resolve', requireRole('admin'), validateBody(resolveReportSchema), (req, res) => res.json(contentService.resolveReport(req.demoUser, req.params.id, req.body.outcome)));
 api.post('/threads', requireRole('learner'), validateBody(startThreadSchema), (req, res) => res.status(201).json(classmateMessaging.start(req.demoUser.id, req.body.participantId, req.body.body)));
+api.post('/staff/threads', requireRole('instructor', 'admin'), validateBody(staffThreadSchema), (req, res) => res.status(201).json(staffMessaging.start(req.demoUser.id, req.body.participantId, req.body.subject, req.body.body)));

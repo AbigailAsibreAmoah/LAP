@@ -113,6 +113,8 @@ export interface Learner {
   streakDays: number;
   lessonsCompleted: number;
   lessonsTotal: number;
+  /** Email a receipt after each payment (on unless the learner turns it off). */
+  receiptEmails?: boolean;
 }
 
 export type BookingStatus = 'confirmed' | 'cancelled' | 'completed';

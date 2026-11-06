@@ -11,3 +11,4 @@ export * from './speechScore';
 export * from './kidStories';
 export * from './accounts';
 export * from './cafe';
+export * from './receipts';

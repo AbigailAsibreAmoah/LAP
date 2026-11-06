@@ -43,6 +43,18 @@ export const classmateMessaging = {
   },
 };
 
+/** Tutors and admins writing to a learner (feedback, follow-ups). Staff may only start conversations with learners. */
+export const staffMessaging = {
+  start(from: string, to: string, subject: string, body: string) {
+    if (!to.startsWith('lrn-')) throw new AppError(403, 'learners_only', 'Staff can start conversations with learners only.');
+    const found = findContactDetails(body);
+    if (found.length) throw new AppError(422, 'contact_details_blocked', CONTACT_BLOCK_MESSAGE.en, { found });
+    const thread = messageRepository.between(from, to) ?? messageRepository.create({ id: nextId('thr'), participantIds: [from, to], subject, messages: [] });
+    messageRepository.append(thread.id, { id: nextId('msg'), from, body, at: new Date().toISOString() });
+    return thread;
+  },
+};
+
 export const notificationService = {
   list: () => notificationRepository.all(),
   /** Records a portal notification. Email/WhatsApp copies go through the (mock) sender. */

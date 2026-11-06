@@ -64,18 +64,24 @@ const NAV: Record<Role, NavGroup[]> = {
   ],
   admin: [
     { items: [{ to: '/admin', key: 'app.overview', icon: 'chart', end: true, mobile: true }] },
-    { key: 'app.manage', items: [
-      { to: '/admin/learners', key: 'app.learners', icon: 'users', mobile: true },
-      { to: '/admin/instructors', key: 'app.instructors', icon: 'user' },
-      { to: '/admin/courses', key: 'nav.courses', icon: 'book' },
+    { key: 'app.operations', items: [
       { to: '/admin/bookings', key: 'app.bookings', icon: 'calendar', mobile: true },
       { to: '/admin/payments', key: 'app.payments', icon: 'card', mobile: true },
+      { to: '/admin/support', key: 'app.support', icon: 'support' },
+    ] },
+    { key: 'app.people', items: [
+      { to: '/admin/learners', key: 'app.learners', icon: 'users', mobile: true },
+      { to: '/admin/instructors', key: 'app.instructors', icon: 'user' },
+      { to: '/admin/groups', key: 'app.groups', icon: 'users' },
+    ] },
+    { key: 'app.learningGroup', items: [
+      { to: '/admin/courses', key: 'nav.courses', icon: 'book' },
       { to: '/admin/content', key: 'app.library', icon: 'layers', mobile: true },
       { to: '/admin/immersion', key: 'app.immersion', icon: 'mic' },
-      { to: '/admin/groups', key: 'app.groups', icon: 'users' },
       { to: '/admin/games', key: 'app.kidsGames', icon: 'quiz' },
+    ] },
+    { key: 'app.insights', items: [
       { to: '/admin/cafe', key: 'app.cafe', icon: 'message' },
-      { to: '/admin/support', key: 'app.support', icon: 'support' },
       { to: '/admin/reports', key: 'app.reports', icon: 'file' },
     ] },
   ],

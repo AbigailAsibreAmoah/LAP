@@ -6,19 +6,25 @@ import { AnimatedBar } from '../../components/animations/Reveal';
 import { fadeUp, spring, stagger } from '../../components/animations/motion';
 import { DemoTag, EmptyState, Notice } from '../../components/ui/Controls';
 import { Icon } from '../../components/ui/Icon';
-import { Drawer } from '../../components/ui/Overlay';
+import { Drawer, Modal } from '../../components/ui/Overlay';
 import { useToast } from '../../components/ui/Toasts';
 import { useI18n } from '../../i18n/I18nProvider';
 import { useStore } from '../../state/AppStore';
 import { nowIso, formatDate, formatTime, isUpcoming, relativeDay } from '../../utils/format';
 import { PageHead } from '../learner/LearnerPages';
 
+/** A booked session's Meet link when Google Calendar is connected; until then, a new Google Meet opens. */
+const meetLink = (b: { meeting?: { joinUrl: string | null } }) => b.meeting?.joinUrl ?? 'https://meet.google.com/new';
+
 const tutor = TUTORS.find((t) => t.id === DEMO_TUTOR_ID)!;
 
 export function InstructorDashboard() {
   const { t, lang } = useI18n();
-  const { bookings, submissions, notes } = useStore();
+  const { bookings, submissions, notes, actions } = useStore();
   const toast = useToast();
+  const [writing, setWriting] = useState<{ learner: string; lesson: string; text: string } | null>(null);
+  const [feedback, setFeedback] = useState('');
+  const [sending, setSending] = useState(false);
   const mine = bookings.filter((b) => b.tutorId === tutor.id && b.status === 'confirmed' && isUpcoming(b.start)).sort((a, b) => a.start.localeCompare(b.start));
   const learnerIds = [...new Set(bookings.filter((b) => b.tutorId === tutor.id).map((b) => b.learnerId))];
   const pending = [
@@ -58,7 +64,7 @@ export function InstructorDashboard() {
                       <span className="plan-title">{t('instr.prepare')} · {l.name} <span className="chip" style={{ minHeight: 20, marginLeft: 4 }}>{l.level}</span></span>
                       <span className="tiny muted"><span lang="fr">{b.topic}</span> · {relativeDay(b.start, lang, t)} {formatTime(b.start, lang)}</span>
                     </span>
-                    <button className="btn btn-secondary btn-sm" disabled title={t('demo.teams')}><Icon name="meet" size={15} /> Google Meet</button>
+                    <a className="btn btn-secondary btn-sm" href={meetLink(b)} target="_blank" rel="noopener noreferrer" title={b.meeting?.joinUrl ? (lang === 'fr' ? 'Rejoindre la séance' : 'Join the session') : t('demo.teams')}><Icon name="meet" size={15} /> {b.meeting?.joinUrl ? (lang === 'fr' ? 'Rejoindre Meet' : 'Join Meet') : lang === 'fr' ? 'Lancer Meet' : 'Start Meet'}</a>
                   </motion.li>
                 );
               })}
@@ -73,7 +79,7 @@ export function InstructorDashboard() {
                       <span className="tiny muted" lang="fr">{p.lesson}</span>
                       <span className="small" lang="fr" style={{ display: 'block', marginTop: 6, fontStyle: 'italic', color: 'var(--ink-2)', borderLeft: '2px solid var(--ivory-300)', paddingLeft: 10 }}>“{p.text}”</span>
                     </span>
-                    <button className="btn btn-primary btn-sm" onClick={() => { setReviewed((r) => [...r, p.lesson + p.learner]); toast(lang === 'fr' ? 'Retour enregistré (démo — aucun message envoyé)' : 'Feedback recorded (demo — no message sent)'); }}>
+                    <button className="btn btn-primary btn-sm" onClick={() => { setWriting(p); setFeedback(''); }}>
                       {t('instr.sendFeedback')}
                     </button>
                   </motion.li>
@@ -82,7 +88,35 @@ export function InstructorDashboard() {
             </AnimatePresence>
           </ol>
           {!soon.length && !toReview.length && <EmptyState icon="checkCircle" title={t('instr.queueEmpty')} />}
-          <p className="tiny muted" style={{ marginTop: 8 }}>{t('demo.teams')}</p>
+          <Modal open={!!writing} onClose={() => setWriting(null)} title={writing ? `${t('instr.sendFeedback')} · ${LEARNERS.find((x) => x.id === writing.learner)?.name ?? ''}` : ''} width={560}>
+            {writing && (
+              <form className="stack" style={{ ['--gap' as string]: '12px' }} onSubmit={(e) => {
+                e.preventDefault();
+                if (!feedback.trim()) return;
+                setSending(true);
+                const body = `📝 ${lang === 'fr' ? 'Retour sur' : 'Feedback on'} « ${writing.lesson} »\n\n${feedback.trim()}`;
+                actions.staffMessage(writing.learner, lang === 'fr' ? `Retour : ${writing.lesson}` : `Feedback: ${writing.lesson}`, body)
+                  .then(() => { setReviewed((r) => [...r, writing.lesson + writing.learner]); setWriting(null); toast(lang === 'fr' ? 'Retour envoyé dans la messagerie de l’apprenant·e' : 'Feedback sent to the learner’s Messages'); })
+                  .catch((err) => toast(err instanceof Error ? err.message : String(err)))
+                  .finally(() => setSending(false));
+              }}>
+                <p className="small muted" lang="fr">{writing.lesson}</p>
+                <blockquote className="report-quote" lang="fr">{writing.text}</blockquote>
+                <label className="field">
+                  <span className="label">{lang === 'fr' ? 'Votre retour' : 'Your feedback'}</span>
+                  <textarea className="textarea" style={{ minHeight: 130 }} value={feedback} onChange={(e) => setFeedback(e.target.value)} placeholder={lang === 'fr' ? 'Ce qui est réussi, une correction précise, et un conseil pour la suite…' : 'What works, one precise correction, and a tip for next time…'} maxLength={2000} autoFocus />
+                </label>
+                <div className="row" style={{ ['--gap' as string]: '6px' }}>
+                  {(lang === 'fr' ? ['Très bon travail !', 'Attention à l’accord du participe passé.', 'Essayez d’utiliser « cependant ».'] : ['Very good work!', 'Watch the past participle agreement.', 'Try using “cependant”.']).map((s) => (
+                    <button key={s} type="button" className="chip chip-outline" style={{ cursor: 'pointer', minHeight: 32 }} onClick={() => setFeedback((f) => (f ? `${f} ${s}` : s))}>+ {s}</button>
+                  ))}
+                </div>
+                <button className="btn btn-primary" disabled={!feedback.trim() || sending}>{sending ? '…' : lang === 'fr' ? 'Envoyer le retour' : 'Send feedback'}</button>
+                <p className="tiny muted">{lang === 'fr' ? 'Le retour arrive dans la messagerie de l’apprenant·e. Les coordonnées personnelles sont bloquées.' : 'The feedback arrives in the learner’s Messages. Personal contact details are blocked.'}</p>
+              </form>
+            )}
+          </Modal>
+          <p className="tiny muted" style={{ marginTop: 8 }}>{lang === 'fr' ? '« Lancer Meet » ouvre une nouvelle réunion Google Meet. Une fois Google Agenda connecté, chaque séance aura son propre lien.' : '“Start Meet” opens a new Google Meet. Once Google Calendar is connected, each session gets its own link.'}</p>
         </motion.section>
 
         <motion.div variants={fadeUp} className="span-4 stack" style={{ ['--gap' as string]: '20px' }}>
@@ -173,7 +207,7 @@ export function AvailabilityPage() {
 export function InstructorLearnersPage() {
   const { t, l, lang } = useI18n();
   const toast = useToast();
-  const { bookings, notes, actions } = useStore();
+  const { bookings, notes, actions, content } = useStore();
   const ids = [...new Set(bookings.filter((b) => b.tutorId === tutor.id).map((b) => b.learnerId))];
   const learners = LEARNERS.filter((x) => ids.includes(x.id));
   const [open, setOpen] = useState<string | null>(null);
@@ -219,13 +253,21 @@ export function InstructorLearnersPage() {
               </AnimatePresence>
             </section>
             <section>
-              <h2 className="h4" style={{ marginBottom: 8 }}>{t('instr.followUp')}</h2>
-              <div className="row" style={{ ['--gap' as string]: '6px' }}>
-                {['Speaking Studio · Réunion', 'Quiz : les présentations', 'Compte rendu de réunion'].map((a) => (
-                  <button key={a} className="chip chip-outline" style={{ cursor: 'pointer', minHeight: 34 }} onClick={() => toast(lang === 'fr' ? `Activité assignée : ${a} (démo)` : `Activity assigned: ${a} (demo)`)}>
-                    <Icon name="plus" size={13} /> <span lang="fr">{a}</span>
-                  </button>
-                ))}
+              <h2 className="h4" style={{ marginBottom: 4 }}>{t('instr.followUp')}</h2>
+              <p className="tiny muted" style={{ marginBottom: 8 }}>{lang === 'fr' ? 'Assignez un pack : il apparaît dans « Ma pratique » de l’apprenant·e.' : 'Assign a pack: it appears in the learner’s “My practice”.'}</p>
+              <div className="stack" style={{ ['--gap' as string]: '6px' }}>
+                {content.packs.filter((p) => p.level === sel.level || content.packs.length <= 6).slice(0, 6).map((p) => {
+                  const given = content.assignments.find((a) => a.packId === p.id && a.learnerId === sel.id);
+                  return (
+                    <div key={p.id} className="list-row">
+                      <span style={{ flex: 1, minWidth: 0 }}><span className="small" style={{ fontWeight: 600 }}>{l(p.title)}</span> <span className="tiny muted">· {p.level}</span></span>
+                      {given ? <span className="chip">{given.status === 'reviewed' ? (lang === 'fr' ? 'Corrigé' : 'Reviewed') : given.status === 'submitted' ? (lang === 'fr' ? 'Rendu' : 'Submitted') : lang === 'fr' ? 'Assigné' : 'Assigned'}</span> : (
+                        <button className="btn btn-secondary btn-sm" onClick={() => actions.content.assignPack({ packId: p.id, learnerId: sel.id, note: '' }).then(() => toast(lang === 'fr' ? 'Pack assigné' : 'Pack assigned')).catch((err: unknown) => toast(err instanceof Error ? err.message : String(err)))}><Icon name="plus" size={13} /> {lang === 'fr' ? 'Assigner' : 'Assign'}</button>
+                      )}
+                    </div>
+                  );
+                })}
+                {!content.packs.length && <p className="small muted">{lang === 'fr' ? 'Aucun pack pour l’instant : créez-en dans Immersion.' : 'No packs yet: create them in the Immersion toolkit.'}</p>}
               </div>
             </section>
             <Notice tone="navy">{t('msg.privacy')}</Notice>

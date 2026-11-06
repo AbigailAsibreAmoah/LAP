@@ -189,6 +189,33 @@ export const api = {
     return demoAdapter.cancelBooking(ctx.learner!, ctx.bookings.find((b) => b.id === id)!, input);
   },
 
+  /** Tutor/admin starts (or continues) a conversation with a learner. Offline: null (the store keeps it locally). */
+  async staffThread(userId: string, participantId: string, subject: string, body: string): Promise<MessageThread | null> {
+    if (!(await detectApi())) return null;
+    return request<MessageThread>('/staff/threads', { method: 'POST', body: { participantId, subject, body }, userId });
+  },
+
+  /** Emails a payment receipt (simulated until an email provider is connected). */
+  async emailReceipt(userId: string, payment: Payment, learner: Learner): Promise<{ sent: boolean; to: string; simulated: boolean }> {
+    if (await detectApi()) return request(`/payments/${payment.reference}/receipt/email`, { method: 'POST', userId });
+    return { sent: true, to: learner.email ?? learner.name, simulated: true };
+  },
+  /** Turns automatic receipt emails on or off for this learner. */
+  async setReceiptEmails(userId: string, on: boolean): Promise<void> {
+    if (await detectApi()) await request('/me/receipt-emails', { method: 'PUT', body: { receiptEmails: on }, userId });
+  },
+
+  /** Admin: give or remove credits. Offline, the change stays in this browser. */
+  async adminCredits(adminId: string, learner: Learner, delta: number, reason: string): Promise<Learner> {
+    if (await detectApi()) return (await request<{ learner: Learner }>(`/admin/learners/${learner.id}/credits`, { method: 'POST', body: { delta, reason }, userId: adminId })).learner;
+    return { ...learner, credits: Math.max(0, learner.credits + delta) };
+  },
+  /** Admin: open a learner's courses up to a level. */
+  async adminUnlock(adminId: string, learner: Learner, level: Learner['level']): Promise<Learner> {
+    if (await detectApi()) return (await request<{ learner: Learner }>(`/admin/learners/${learner.id}/unlock`, { method: 'POST', body: { level }, userId: adminId })).learner;
+    return { ...learner, unlockedLevel: level };
+  },
+
   async reviewCancellation(adminId: string, booking: Booking, learner: Learner, decision: 'approved' | 'declined', note: string) {
     if (await detectApi()) {
       return request<{ booking: Booking; creditsRemaining: number }>(`/admin/bookings/${booking.id}/exception`, { method: 'POST', body: { decision, note }, userId: adminId });

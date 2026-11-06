@@ -1,4 +1,4 @@
-import { canBuyLevel, communityOps, levelProduct, type Payment, type PaymentMethod } from '@laporte/shared';
+import { buildReceipt, canBuyLevel, communityOps, levelProduct, receiptText, type Payment, type PaymentMethod } from '@laporte/shared';
 import { contentStore } from '../repositories/contentStore';
 import { catalogRepository } from '../repositories/catalogRepository';
 import { learnerRepository } from '../repositories/learnerRepository';
@@ -7,6 +7,23 @@ import { AppError, notFound } from '../utils/errors';
 import { nextId, paymentReference } from '../utils/ids';
 import { notificationService } from './engagementService';
 import { integrations } from './integrations';
+
+/** Emails a payment receipt to its learner. Simulated until a real email provider is configured. */
+export async function emailReceipt(payment: Payment) {
+  const learner = learnerRepository.byId(payment.learnerId);
+  const receipt = learner && buildReceipt(payment, learner);
+  if (!learner || !receipt) throw new AppError(409, 'no_receipt', 'Only successful payments have a receipt.');
+  const to = learner.email ?? `${learner.id}@demo.invalid`;
+  const result = await integrations.notifications.send({ channel: 'email', to, template: 'payment-receipt', variables: { reference: receipt.number, total: String(receipt.totalGhs), text: receiptText(receipt, 'en') } });
+  notificationService.record({
+    learnerId: learner.id,
+    channel: 'email',
+    title: { en: 'Payment receipt sent', fr: 'Reçu de paiement envoyé' },
+    body: { en: `Receipt ${receipt.number} sent to ${to}${result.simulated ? ' (simulated)' : ''}.`, fr: `Reçu ${receipt.number} envoyé à ${to}${result.simulated ? ' (simulé)' : ''}.` },
+    simulated: result.simulated,
+  });
+  return { sent: true, to, simulated: result.simulated };
+}
 
 export async function initializePayment(input: {
   learnerId: string;
@@ -85,19 +102,8 @@ export async function verifyPayment(reference: string) {
       const r = communityOps.redeemToken(contentStore.get(), { user: { id: payment.learnerId, role: 'learner' }, now: new Date().toISOString(), newId: nextId }, payment.discount.tokenId);
       contentStore.set(r.state);
     }
-    await integrations.notifications.send({
-      channel: 'email',
-      to: payment.learnerId,
-      template: 'payment-receipt',
-      variables: { reference },
-    });
-    notificationService.record({
-      learnerId: payment.learnerId,
-      channel: 'email',
-      title: { en: 'Payment receipt', fr: 'Reçu de paiement' },
-      body: { en: `Receipt ${reference} (simulated).`, fr: `Reçu ${reference} (simulé).` },
-      simulated: true,
-    });
+    // Only learners who want receipts by email get one (they can still download it in the app).
+    if (learnerRepository.byId(payment.learnerId)?.receiptEmails !== false) await emailReceipt(payment);
   }
   return { payment, learner: learnerRepository.byId(payment.learnerId)! };
 }

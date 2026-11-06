@@ -9,10 +9,12 @@ import { PublicLayout } from './layouts/PublicLayout';
 import { HomePage } from './pages/public/HomePage';
 import { AboutPage, AuthPage, CorporatePage, CourseDetailPage, CoursesPage, HelpPage, HowItWorksPage, PricingPage } from './pages/public/PublicPages';
 import { AppStoreProvider } from './state/AppStore';
+import { importFresh } from './utils/staleBuild';
 
 // Workspaces are split from the public site so the first visit loads only what it needs.
+// If a newer version was deployed while the tab was open, importFresh reloads instead of failing.
 const named = <M, K extends keyof M>(load: () => Promise<M>, key: K) =>
-  lazy(() => load().then((m) => ({ default: m[key] as React.ComponentType })));
+  lazy(() => importFresh(load)().then((m) => (m ? { default: m[key] as React.ComponentType } : new Promise<never>(() => undefined)))); // no module: the page is reloading
 const learner = () => import('./pages/learner/LearnerPages');
 const DashboardPage = named(() => import('./pages/learner/DashboardPage'), 'DashboardPage');
 const LessonPage = named(learner, 'LessonPage');

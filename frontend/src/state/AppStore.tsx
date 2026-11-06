@@ -217,6 +217,32 @@ function useStoreValue() {
       return result.booking;
     },
 
+    receipts: {
+      /** Sends the receipt by email to the learner who paid. */
+      async email(reference: string) {
+        const payment = serverRef.current.payments.find((p) => p.reference === reference)!;
+        const owner = serverRef.current.learners.find((l) => l.id === payment.learnerId)!;
+        return api.emailReceipt(userId, payment, owner);
+      },
+      /** Learner's choice: email a receipt after every payment, or not. */
+      async setAutoEmail(on: boolean) {
+        await api.setReceiptEmails(userId, on);
+        patchLearner(learnerIdRef.current, { receiptEmails: on });
+      },
+    },
+    admin: {
+      async adjustCredits(learnerId: string, delta: number, reason: string) {
+        const owner = serverRef.current.learners.find((l) => l.id === learnerId)!;
+        const next = await api.adminCredits(userId, owner, delta, reason);
+        patchLearner(learnerId, { credits: next.credits });
+      },
+      async unlockLevel(learnerId: string, level: Learner['level']) {
+        const owner = serverRef.current.learners.find((l) => l.id === learnerId)!;
+        const next = await api.adminUnlock(userId, owner, level);
+        patchLearner(learnerId, { unlockedLevel: next.unlockedLevel });
+      },
+    },
+
     async reviewCancellation(bookingId: string, decision: 'approved' | 'declined', note: string) {
       const booking = serverRef.current.bookings.find((b) => b.id === bookingId)!;
       const owner = serverRef.current.learners.find((l) => l.id === booking.learnerId)!;
@@ -301,6 +327,21 @@ function useStoreValue() {
     markAllRead() {
       serverRef.current.notifications.filter((n) => !n.read).forEach((n) => void api.markNotificationRead(n.id).catch(() => undefined));
       setServer((s) => ({ ...s, notifications: s.notifications.map((n) => ({ ...n, read: true })) }));
+    },
+
+    /** Tutor or admin writes to a learner: continues their conversation, or starts one. Returns the thread id. */
+    async staffMessage(otherId: string, subject: string, body: string) {
+      if (findContactDetails(body).length) throw new ApiError(422, 'contact_details_blocked', CONTACT_BLOCK_MESSAGE.en);
+      const existing = serverRef.current.threads.find((t) => t.participantIds.length === 2 && t.participantIds.includes(userId) && t.participantIds.includes(otherId));
+      if (existing) {
+        actions.sendMessage(existing.id, body);
+        return existing.id;
+      }
+      const fromServer = await api.staffThread(userId, otherId, subject, body);
+      const msg = { id: `m-${Date.now()}`, from: userId, body, at: new Date().toISOString() };
+      const thread = fromServer ?? { id: `thr-${Date.now().toString(36)}`, participantIds: [userId, otherId], subject, messages: [msg] };
+      setServer((s) => ({ ...s, threads: s.threads.some((t) => t.id === thread.id) ? s.threads.map((t) => (t.id === thread.id ? thread : t)) : [thread, ...s.threads] }));
+      return thread.id;
     },
 
     /** Throws when the message contains contact details (they may not be exchanged in the portal). */
