@@ -45,7 +45,7 @@ export function PaystackSim({ open, planId, title, amountGhs, discountTokenId, o
   const [error, setError] = useState<string | null>(null);
   const [count, setCount] = useState(0);
   const alive = useRef(true);
-  useEffect(() => () => { alive.current = false; }, []);
+  useEffect(() => { alive.current = true; return () => { alive.current = false; }; }, []);
 
   // Fresh window each time it opens.
   useEffect(() => { if (open) { setStep('details'); setPayment(null); setError(null); setSimFail(false); } }, [open]);

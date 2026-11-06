@@ -463,6 +463,8 @@ export const LEARNERS: Learner[] = [
   { id: 'lrn-samuel', name: 'Samuel Tetteh', firstName: 'Samuel', city: 'Cape Coast', level: 'A1', progressToNext: 15, goal: L('Prepare for a university exchange', 'Préparer un échange universitaire'), areaId: 'academic', portrait: { skin: skin.rich, hair: 'bald', hairColor: '#120C09', outfit: '#141B34', accent: '#C49A5A', bg: '#DCE3EE', beard: true }, joined: '2026-10-05', lastActive: '2026-10-19', planId: 'plan-essentials', credits: 0, streakDays: 0, lessonsCompleted: 2, lessonsTotal: 20 },
   { id: 'lrn-nana', name: 'Nana Akosua Frimpong', firstName: 'Nana', city: 'Accra', level: 'C1', progressToNext: 30, goal: L('Chair ECOWAS working groups in French', 'Présider des groupes de travail de la CEDEAO en français'), areaId: 'diplomacy', portrait: { skin: skin.rich, hair: 'headwrap', hairColor: '#1A120D', outfit: '#1F6B4F', accent: '#F1E6D2', bg: '#E4E9DC' }, joined: '2026-02-10', lastActive: '2026-10-26', planId: 'plan-conversation', credits: 4, streakDays: 21, lessonsCompleted: 44, lessonsTotal: 52 },
 ];
+// The demo learners already study at their level, so it counts as paid (A1 is free anyway).
+for (const l of LEARNERS) if (l.level !== 'A1') l.paidLevels ??= [l.level];
 
 const teams = { provider: 'google-meet' as const, status: 'simulated' as const, joinUrl: null };
 

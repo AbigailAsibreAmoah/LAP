@@ -65,6 +65,21 @@ describe('courses follow the level', () => {
     expect((await request(app).post(`/api/content/lessons/${a2Lesson.id}/complete`).send({})).status).toBe(200);
   });
 
+  it('lets a learner placed above A1 pay once for their starting level (Start my B1 courses)', async () => {
+    const placed = await takePlacement(app, right); // top marks → C2
+    const level = placed.body.learner.level;
+    expect(placed.body.learner.paidLevels ?? []).not.toContain(level);
+    const init = await request(app).post('/api/payments/initialize').send({ planId: 'level-' + level, method: 'mobile-money', provider: 'MTN MoMo' });
+    expect(init.status).toBe(201);
+    const verified = await request(app).post('/api/payments/' + init.body.payment.reference + '/verify');
+    expect(verified.body.payment.status).toBe('success');
+    expect(verified.body.learner.paidLevels).toContain(level);
+    expect(verified.body.learner.level).toBe(level); // paying for it does not move the level
+    expect(verified.body.learner.unlockedLevel).toBeUndefined();
+    // …and only once
+    expect((await request(app).post('/api/payments/initialize').send({ planId: 'level-' + level, method: 'card', provider: 'Card •••• 4081' })).status).toBe(409);
+  });
+
   it('works out course access from the course’s first level', () => {
     const a1 = { level: 'A1' as const };
     const business = COURSES.find((c) => c.id === 'crs-business')!;

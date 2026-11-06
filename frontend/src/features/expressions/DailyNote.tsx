@@ -143,8 +143,31 @@ const subscribe = (l: () => void) => { listeners.add(l); return () => listeners.
 /** Whether this browser can keep the note on top of other windows. */
 export const canFloatOnTop = () => typeof window !== 'undefined' && 'documentPictureInPicture' in window;
 
-function copyStyles(target: Document) {
-  for (const node of document.querySelectorAll('link[rel="stylesheet"], style')) target.head.appendChild(node.cloneNode(true));
+/**
+ * Copies the app's styles into the note window. The window is a blank document (about:blank), so a
+ * relative <link href="/assets/index-….css"> (how production builds ship CSS) would point nowhere:
+ * the rules are copied inline instead, and anything unreadable (cross-origin, e.g. Google Fonts)
+ * is linked by its ABSOLUTE address. Calls `onLoad` when linked sheets arrive, to re-fit the note.
+ */
+function copyStyles(target: Document, onLoad?: () => void) {
+  for (const sheet of Array.from(document.styleSheets)) {
+    const owner = sheet.ownerNode as HTMLLinkElement | HTMLStyleElement | null;
+    try {
+      const css = Array.from(sheet.cssRules, (r) => r.cssText).join('\n');
+      const style = target.createElement('style');
+      if (sheet.media.mediaText) style.media = sheet.media.mediaText;
+      style.textContent = css;
+      target.head.appendChild(style);
+    } catch {
+      const href = sheet.href ?? (owner instanceof HTMLLinkElement ? owner.href : null);
+      if (!href) continue;
+      const link = target.createElement('link');
+      link.rel = 'stylesheet';
+      link.href = new URL(href, document.baseURI).href;
+      if (onLoad) link.addEventListener('load', onLoad);
+      target.head.appendChild(link);
+    }
+  }
   target.documentElement.lang = document.documentElement.lang;
   target.documentElement.className = 'dn-desk-html';
   target.body.style.margin = '0';
@@ -197,7 +220,7 @@ export async function openDesktopNote() {
     if (!win) return 'blocked';
     win.document.body.innerHTML = '';
   }
-  copyStyles(win.document);
+  copyStyles(win.document, () => fitNote(win!));
   const root = win.document.createElement('div');
   root.id = 'note-root';
   win.document.body.appendChild(root);

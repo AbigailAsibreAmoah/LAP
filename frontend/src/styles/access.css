@@ -26,6 +26,7 @@
 .start-main { max-width: 980px; margin: 0 auto; padding: 12px 16px 64px; }
 .start-title { margin: 8px 0 6px; font-size: clamp(2rem, 5vw, 3rem); }
 .start-main .placement { margin-top: 22px; }
+.start-main .story-strip-compact { max-width: 760px; }
 .start-choice { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
 @media (max-width: 720px) { .start-choice { grid-template-columns: minmax(0, 1fr); } }
 .start-option { display: grid; gap: 8px; align-content: start; padding: 24px; border: 2px solid var(--line, #ece4d8); border-radius: 22px; background: #fff; text-align: left; color: var(--ink, #141b34); cursor: pointer; transition: border-color 0.2s, transform 0.2s; }

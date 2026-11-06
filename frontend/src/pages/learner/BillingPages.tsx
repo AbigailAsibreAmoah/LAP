@@ -165,7 +165,7 @@ export function CheckoutPage() {
           <AnimatePresence mode="wait">
             {stage === 'form' && (
               <motion.div key="form" className="stack" style={{ ['--gap' as string]: '16px' }} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-                {fromStart && level && (
+                {fromStart && level && level.level === learner.level && (
                   <div className="pay-start">
                     <span className="tone-icon" data-tone="burgundy"><Icon name="book" size={17} /></span>
                     <div>
