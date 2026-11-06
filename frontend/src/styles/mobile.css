@@ -81,10 +81,32 @@
 
 /* ---------- Phones and tablets: a menu button opens every page (the bottom tabs stay as they are) ---------- */
 .side-close, .menu-scrim { display: none; }
-.mobile-menu-row { display: none; }
+.topbar .mobile-menu-row, .side-prefs { display: none; }
+.topbar-prefs { display: contents; }
 @media (max-width: 900px) {
-  .mobile-menu-row { display: inline-flex; align-items: center; gap: 8px; flex: none; }
-  .menu-btn { flex: none; }
+  /* App bar: [☰] [logo La Porte] ··· [actions]. One row, one height (44px), even spacing. */
+  .topbar { flex-wrap: wrap; row-gap: 14px; column-gap: 10px; padding-top: 12px; }
+  .topbar .mobile-only.mobile-menu-row { display: flex !important; order: 0; align-items: center; gap: 12px; flex: none; min-width: 0; }
+  /* Same 44px height for every control in the bar; the profile stays reachable on phones. */
+  .topbar-actions .round-btn { width: 44px; height: 44px; }
+  .topbar-actions .user-pill { display: inline-flex; padding: 3px; }
+  .topbar-actions { order: 1; gap: 8px; }
+  .topbar .search-pill { order: 2; flex: 1 0 100%; max-width: none; height: 46px; }
+  .menu-btn { flex: none; border: 0; cursor: pointer; }
+  .mobile-brand { display: inline-flex; align-items: center; gap: 10px; min-width: 0; color: var(--navy, #141b34); text-decoration: none; }
+  .mobile-brand .side-logo { width: 40px; height: 40px; border-radius: 12px; }
+  .mobile-wordmark { font-family: var(--font-display, inherit); font-size: 1.15rem; font-weight: 700; letter-spacing: -0.01em; white-space: nowrap; }
+}
+@media (max-width: 640px) {
+  /* Phones: language and the demo role picker live in the menu, so the bar only holds what you tap often. */
+  .topbar-prefs { display: none; }
+  .app-shell[data-menu] .side-prefs { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 12px; border-radius: 14px; background: var(--ivory, #f6efe4); }
+  .app-shell[data-menu] .side-prefs .select { max-width: none; }
+}
+@media (max-width: 360px) {
+  .mobile-wordmark { display: none; }
+}
+@media (max-width: 900px) {
   .app-shell[data-menu] .sidebar {
     display: flex;
     position: fixed;

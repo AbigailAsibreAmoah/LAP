@@ -1,5 +1,5 @@
 import { motion, useReducedMotion } from 'motion/react';
-import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useRef, useState, type ButtonHTMLAttributes, type ReactNode } from 'react';
 import { useI18n } from '../../../i18n/I18nProvider';
 import { readAloud } from './readAloud';
 import { Scene } from './Scene';
@@ -8,11 +8,11 @@ import type { Book } from './stories';
 
 /* ======================= A book on the shelf (3D object) ======================= */
 
-export function BookObject({ book, recommended, read, onOpen }: { book: Book; recommended?: boolean; read?: boolean; onOpen: () => void }) {
+export function BookObject({ book, recommended, read, onOpen, kept, lifted, landed, dragProps }: { book: Book; recommended?: boolean; read?: boolean; onOpen: () => void; kept?: boolean; lifted?: boolean; landed?: boolean; dragProps?: ButtonHTMLAttributes<HTMLButtonElement> }) {
   const { lang } = useI18n();
   const fr = lang === 'fr';
   return (
-    <button type="button" className="bk3d-slot" onClick={onOpen} aria-label={`${book.title} · ${fr ? 'pour les' : 'ages'} ${book.ages}${fr ? ' ans' : ''}`}>
+    <button type="button" className="bk3d-slot" data-lifted={lifted || undefined} data-landed={landed || undefined} {...dragProps} onClick={onOpen} aria-label={`${book.title} · ${fr ? 'pour les' : 'ages'} ${book.ages}${fr ? ' ans' : ''}`}>
       {recommended && <span className="bk3d-ribbon">{fr ? 'Pour toi' : 'For you'}</span>}
       <span className="bk3d" style={{ ['--cloth' as string]: book.cloth, ['--ink' as string]: book.ink }}>
         <span className="bk3d-face bk3d-front">
@@ -22,6 +22,7 @@ export function BookObject({ book, recommended, read, onOpen }: { book: Book; re
             <span className="bk3d-sub">{fr ? 'Une histoire bilingue' : 'A bilingual story'}</span>
           </span>
           <span className="bk3d-foot">La Porte Kids · {book.ages} {fr ? 'ans' : 'yrs'}</span>
+          {kept && <span className="bk3d-kept" aria-label={fr ? 'Dans ta bibliothèque' : 'In your library'}>♥</span>}
           {read && <span className="bk3d-read" aria-label={fr ? 'Lu' : 'Read'}>★</span>}
           <span className="bk3d-gloss" aria-hidden />
         </span>

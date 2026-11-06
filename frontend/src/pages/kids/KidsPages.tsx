@@ -10,7 +10,8 @@ import { useToast } from '../../components/ui/Toasts';
 import { BuilderGame, LearnWords, ListenGame, LivePlayerView, MemoryGame, QuizGame, SpeakGame, Stars } from '../../features/kids/KidGames';
 import { isLocalGame, liveClient } from '../../features/kids/liveClient';
 import { StoryTime } from '../../features/kids/StoryTime';
-import { BookObject, BookReader } from '../../features/kids/books/Books';
+import { BookReader } from '../../features/kids/books/Books';
+import { KidShelves } from '../../features/kids/books/Shelves';
 import { autoBooksOfTheWeek, bandFor, BOOKS, booksForAge, booksOfTheWeek, BOOKS_PER_WEEK, weekKey } from '../../features/kids/books/stories';
 
 /** Each book counts towards a world in the child's progress. */
@@ -402,31 +403,22 @@ export function KidModePage() {
                     // One age group throughout: this child only sees books written for their age.
                     const weekly = booksOfTheWeek(kid.age, nowIso(), kid.bookPick);
                     const library = (kid.library ?? []).map((id) => BOOKS.find((b) => b.id === id)).filter((b): b is (typeof BOOKS)[number] => !!b && booksForAge(kid.age).includes(b));
+                    const saveLibrary = (ids: string[], msg: string) => void actions.kids.update(kid.id, { library: ids }).then(() => toast(msg)).catch((e) => toast(errText(e)));
                     return (
-                      <div className="bk-shelves">
-                        <section className="bk-shelf bk-shelf-week" aria-labelledby="kid-week-book">
-                          <div className="bk-shelf-head">
-                            <h2 id="kid-week-book" lang="fr">Les livres de la semaine</h2>
-                            <span className="small">{fr ? `Pour les ${bandFor(kid.age).label} ans · ${BOOKS_PER_WEEK} nouveaux livres chaque lundi` : `For ages ${bandFor(kid.age).label} · ${BOOKS_PER_WEEK} new books every Monday`}</span>
-                          </div>
-                          <div className="bk-fan">
-                            {weekly.map((b) => <BookObject key={b.id} book={b} read={booksRead.includes(b.id)} onOpen={() => setScreen({ kind: 'book', id: b.id })} />)}
-                          </div>
-                        </section>
-                        <section className="bk-shelf bk-shelf-private" aria-labelledby="kid-library">
-                          <div className="bk-shelf-head">
-                            <h2 id="kid-library" lang="fr">🔒 Ma bibliothèque</h2>
-                            <span className="small">{fr ? 'Tes livres à relire' : 'Your books to read again'}</span>
-                          </div>
-                          {library.length ? (
-                            <div className="bk-fan">
-                              {library.map((b) => <BookObject key={b.id} book={b} read={booksRead.includes(b.id)} onOpen={() => setScreen({ kind: 'book', id: b.id })} />)}
-                            </div>
-                          ) : (
-                            <p className="bk-shelf-empty" lang="fr">{fr ? 'Ta bibliothèque est vide. Dans un livre, touche « ♡ Garder » pour le ranger ici.' : 'Your library is empty. In a book, tap “♡ Keep” to put it here.'}</p>
-                          )}
-                        </section>
-                      </div>
+                      <KidShelves
+                        weekly={weekly}
+                        library={library}
+                        read={booksRead}
+                        title={{
+                          week: 'Les livres de la semaine',
+                          weekSub: fr ? `Pour les ${bandFor(kid.age).label} ans · ${BOOKS_PER_WEEK} nouveaux livres chaque lundi` : `For ages ${bandFor(kid.age).label} · ${BOOKS_PER_WEEK} new books every Monday`,
+                          library: '🔒 Ma bibliothèque',
+                          librarySub: fr ? 'Tes livres à relire' : 'Your books to read again',
+                        }}
+                        onOpen={(id) => setScreen({ kind: 'book', id })}
+                        onKeep={(id) => saveLibrary([...(kid.library ?? []).filter((x) => x !== id), id], fr ? 'Rangé dans ta bibliothèque ♡' : 'Kept in your library ♡')}
+                        onRemove={(id) => saveLibrary((kid.library ?? []).filter((x) => x !== id), fr ? 'Retiré de ta bibliothèque' : 'Taken out of your library')}
+                      />
                     );
                   })()}
                   <h2 className="kid-h2" lang="fr">🗺️ Mes mondes</h2>

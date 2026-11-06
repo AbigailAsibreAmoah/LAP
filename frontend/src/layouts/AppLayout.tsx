@@ -145,6 +145,10 @@ export function AppLayout({ role }: { role: Role }) {
             <Icon name={collapsed ? 'chevronRight' : 'chevronLeft'} size={16} />
           </button>
         </div>
+        <div className="side-prefs" aria-label={lang === 'fr' ? 'Réglages' : 'Settings'}>
+          <LanguageSwitch />
+          <RoleSwitch />
+        </div>
         <nav aria-label={t('app.dashboard')} className="side-nav">
           {groups.map((g, gi) => (
             <div key={gi} role="group" aria-label={g.key ? t(g.key) : undefined}>
@@ -193,8 +197,11 @@ export function AppLayout({ role }: { role: Role }) {
           </div>
           {role === 'learner' && <SearchBox />}
           <div className="topbar-actions">
-            <RoleSwitch />
-            <LanguageSwitch />
+            {/* Settings-type controls: in the bar on larger screens, inside the menu on phones. */}
+            <div className="topbar-prefs">
+              <RoleSwitch />
+              <LanguageSwitch />
+            </div>
             {role === 'learner' && (
               <Link to="/app/notifications" className="round-btn" aria-label={`${t('app.notifications')} (${unread})`}>
                 <Icon name="bell" size={18} />
@@ -223,8 +230,9 @@ export function AppLayout({ role }: { role: Role }) {
 
 function MobileBrand({ role }: { role: Role }) {
   return (
-    <Link to={ROLE_HOME[role]} aria-label="La Porte" className="side-logo">
-      <LogoMark size={18} light />
+    <Link to={ROLE_HOME[role]} aria-label="La Porte — home" className="mobile-brand">
+      <span className="side-logo"><LogoMark size={18} light /></span>
+      <span className="mobile-wordmark">La Porte</span>
     </Link>
   );
 }
