@@ -24,6 +24,8 @@ const VocabularyPage = named(learner, 'VocabularyPage');
 const NotificationsPage = named(learner, 'NotificationsPage');
 const LearnerHelpPage = named(learner, 'LearnerHelpPage');
 const BookPage = named(() => import('./pages/learner/BookingPages'), 'BookPage');
+const TutorsDirectoryPage = named(() => import('./pages/learner/TutorPages'), 'TutorsDirectoryPage');
+const TutorProfilePage = named(() => import('./pages/learner/TutorPages'), 'TutorProfilePage');
 const MyLessonsPage = named(() => import('./pages/learner/BookingPages'), 'MyLessonsPage');
 const BillingPage = named(() => import('./pages/learner/BillingPages'), 'BillingPage');
 const CheckoutPage = named(() => import('./pages/learner/BillingPages'), 'CheckoutPage');
@@ -83,6 +85,8 @@ export function App() {
                   <Route path="group" element={<MyGroupPage />} />
                   <Route path="community" element={<CommunityPage />} />
                   <Route path="placement" element={<PlacementPage />} />
+                  <Route path="tutors" element={<TutorsDirectoryPage />} />
+                  <Route path="tutors/:id" element={<TutorProfilePage />} />
                   <Route path="book" element={<BookPage />} />
                   <Route path="lessons" element={<MyLessonsPage />} />
                   <Route path="vocabulary" element={<VocabularyPage />} />

@@ -145,6 +145,7 @@ function copyStyles(target: Document) {
   for (const node of document.querySelectorAll('link[rel="stylesheet"], style')) target.head.appendChild(node.cloneNode(true));
   target.documentElement.lang = document.documentElement.lang;
   target.body.style.margin = '0';
+  target.body.className = 'dn-desk';
   target.title = 'La Porte · Expression du jour';
 }
 

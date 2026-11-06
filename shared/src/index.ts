@@ -13,3 +13,4 @@ export * from './accounts';
 export * from './cafe';
 export * from './receipts';
 export * from './expressions';
+export * from './tutorProfiles';

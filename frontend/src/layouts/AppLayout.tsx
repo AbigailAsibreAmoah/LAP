@@ -33,6 +33,7 @@ const NAV: Record<Role, NavGroup[]> = {
       { to: '/app/studio', key: 'app.studio', icon: 'mic', mobile: true },
       { to: '/app/practice', key: 'app.practice', icon: 'edit' },
       { to: '/app/group', key: 'app.group', icon: 'users' },
+      { to: '/app/tutors', key: 'app.ourTutors', icon: 'user' },
       { to: '/app/book', key: 'app.book', icon: 'calendar', mobile: true },
       { to: '/app/lessons', key: 'app.lessons', icon: 'clock' },
     ] },

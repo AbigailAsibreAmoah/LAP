@@ -269,6 +269,7 @@ export function BookPage() {
           </button>
         ))}
       </div>
+      <p className="small" style={{ marginTop: -8, marginBottom: 18 }}><Link to={`/app/tutors/${tutor.id}`} className="link">{lang === 'fr' ? `Voir le profil de ${tutor.name}` : `View ${tutor.name}’s profile`}</Link> · <Link to="/app/tutors" className="link">{lang === 'fr' ? 'Tous les tuteurs' : 'All tutors'}</Link></p>
 
       <div className="booking-layout">
         <div className="booking-main">
