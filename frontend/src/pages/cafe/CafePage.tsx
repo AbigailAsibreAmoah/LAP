@@ -11,7 +11,6 @@ import { applyShortcodes, finalizeShortcodes } from '../../features/cafe/emoji';
 import { useI18n } from '../../i18n/I18nProvider';
 import { useStore } from '../../state/AppStore';
 import { formatDate, formatTime } from '../../utils/format';
-import { PageHead } from '../learner/LearnerPages';
 
 /*
  * Le Café La Porte: a calm, members-only community. Three tabs (Feed, Spaces, Study groups),
@@ -54,7 +53,7 @@ export function CafePage() {
   const [groupId, setGroupId] = useState<string | null>(null);
   return (
     <>
-      <PageHead title="Le Café La Porte" sub={fr ? 'Posez vos questions, partagez des liens utiles et pratiquez à l’écrit avec d’autres apprenants.' : 'Ask questions, share useful links and practise writing with other learners.'} />
+      <CafeHero onWrite={() => { setTab('feed'); setSpace(null); setGroupId(null); }} />
       <div className="cafe-tabs" role="tablist">
         {([['feed', fr ? 'Fil' : 'Feed', 'home'], ['spaces', fr ? 'Espaces' : 'Spaces', 'layers'], ['groups', fr ? 'Groupes d’étude' : 'Study groups', 'users']] as const).map(([id, label, icon]) => (
           <button key={id} role="tab" aria-selected={tab === id} className="cafe-tab" onClick={() => { setTab(id); setSpace(null); setGroupId(null); }}><Icon name={icon} size={15} /> {label}</button>
@@ -68,6 +67,53 @@ export function CafePage() {
         </motion.div>
       </AnimatePresence>
     </>
+  );
+}
+
+/* ---------------- Banner ---------------- */
+
+/** The café's welcome banner: a tutor and two learners talking at a table. The words sit on a warm
+ *  fade on the left (which also covers the level badges painted into the picture); the people stay
+ *  in view on the right. On phones the picture sits on top and the words underneath. */
+function CafeHero({ onWrite }: { onWrite: () => void }) {
+  const { lang } = useI18n();
+  const fr = lang === 'fr';
+  const { cafe, person } = useCafe();
+  const weekAgo = Date.parse(nowIso()) - 7 * 864e5;
+  const recent = cafe.posts.filter((p) => Date.parse(p.createdAt) >= weekAgo);
+  const faces = [...new Set(cafe.posts.map((p) => p.authorId))].slice(0, 4).map((id) => ({ id, ...person(id) }));
+  const people = new Set(cafe.posts.map((p) => p.authorId)).size;
+  const write = () => {
+    onWrite();
+    // wait for the feed to mount, then bring the composer into view and focus it
+    setTimeout(() => {
+      const box = document.querySelector<HTMLElement>('.cafe-composer');
+      box?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      box?.querySelector<HTMLElement>('textarea, [contenteditable="true"], input')?.focus({ preventScroll: true });
+    }, 350);
+  };
+  return (
+    <section className="cafe-hero" aria-labelledby="cafe-hero-title">
+      <picture className="cafe-hero-art">
+        <source media="(max-width: 760px)" srcSet="/images/cafe-hero-760.webp" type="image/webp" />
+        <source srcSet="/images/cafe-hero.webp" type="image/webp" />
+        <img src="/images/cafe-hero.jpg" alt={fr ? 'Une tutrice La Porte discute en français avec deux apprenants autour d’une table.' : 'A La Porte tutor chatting in French with two learners around a table.'} width={1024} height={768} decoding="async" />
+      </picture>
+      <div className="cafe-hero-copy">
+        <span className="cafe-hero-kicker" lang="fr">☕ Le Café La Porte</span>
+        <h1 id="cafe-hero-title" className="cafe-hero-title">{fr ? <>Parlez, demandez,{' '}<br />progressez ensemble.</> : <>Ask, share and{' '}<br />practise together.</>}</h1>
+        <p className="cafe-hero-sub">{fr ? 'Posez vos questions, partagez des liens utiles et pratiquez à l’écrit avec d’autres apprenants. Les tuteurs passent souvent.' : 'Ask questions, share useful links and practise writing with other learners. Tutors drop by often.'}</p>
+        <div className="cafe-hero-actions">
+          <button type="button" className="btn btn-primary cafe-hero-btn" onClick={write}><Icon name="edit" size={16} /> {fr ? 'Écrire un message' : 'Write a post'}</button>
+          {faces.length > 0 && (
+            <span className="cafe-hero-people">
+              <span className="cafe-hero-faces" aria-hidden>{faces.map((x) => <span key={x.id} className="cafe-hero-face">{x.portrait ? <Avatar spec={x.portrait} size={30} /> : x.name[0]}</span>)}</span>
+              <span className="tiny">{fr ? `${people} membres · ${recent.length} message${recent.length > 1 ? 's' : ''} cette semaine` : `${people} members · ${recent.length} post${recent.length === 1 ? '' : 's'} this week`}</span>
+            </span>
+          )}
+        </div>
+      </div>
+    </section>
   );
 }
 
