@@ -1,7 +1,7 @@
 import { classmatesOf, COURSES, leaderboard, LEARNERS, TUTORS, type Role } from '@laporte/shared';
 import { motion } from 'motion/react';
 import { useEffect, useId, useMemo, useState } from 'react';
-import { Link, Navigate, NavLink, Outlet, useNavigate } from 'react-router-dom';
+import { Link, Navigate, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { Avatar } from '../components/3d/Portrait';
 import { spring } from '../components/animations/motion';
 import { LogoMark } from '../components/layout/Brand';
@@ -84,7 +84,7 @@ const NAV: Record<Role, NavGroup[]> = {
 export const ROLE_HOME: Record<Role, string> = { learner: '/app', instructor: '/instructor', admin: '/admin' };
 
 export function AppLayout({ role }: { role: Role }) {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   const store = useStore();
 
   // Entering a workspace URL directly selects that demo role.
@@ -113,13 +113,25 @@ export function AppLayout({ role }: { role: Role }) {
       return !v;
     });
 
+  // Phones: the full menu (every page, not just the five tabs) slides in from the left.
+  const [menuOpen, setMenuOpen] = useState(false);
+  const { pathname } = useLocation();
+  useEffect(() => setMenuOpen(false), [pathname]);
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setMenuOpen(false);
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [menuOpen]);
+
   if (startPending && !hasPlacement) return <Navigate to="/start" replace />;
   return (
-    <div className="app-shell" data-collapsed={collapsed || undefined}>
+    <div className="app-shell" data-collapsed={(collapsed && !menuOpen) || undefined} data-menu={menuOpen || undefined}>
       <a href="#app-main" className="skip-link">
         {t('nav.skip')}
       </a>
-      <aside className="sidebar" aria-label="Workspace">
+      {menuOpen && <button type="button" className="menu-scrim" aria-label={t('app.collapseMenu')} onClick={() => setMenuOpen(false)} />}
+      <aside className="sidebar" id="app-menu" aria-label="Workspace">
         <div className="side-top">
           <Link to={ROLE_HOME[role]} className="side-brand" aria-label="La Porte French Institute — home">
             <span className="side-logo"><LogoMark size={20} light /></span>
@@ -128,6 +140,7 @@ export function AppLayout({ role }: { role: Role }) {
               <small>French Institute</small>
             </span>
           </Link>
+          <button type="button" className="side-close" onClick={() => setMenuOpen(false)} aria-label={t('app.collapseMenu')}><Icon name="x" size={18} /></button>
           <button type="button" className="side-toggle" onClick={toggle} aria-expanded={!collapsed} aria-label={collapsed ? t('app.expandMenu') : t('app.collapseMenu')} title={collapsed ? t('app.expandMenu') : t('app.collapseMenu')}>
             <Icon name={collapsed ? 'chevronRight' : 'chevronLeft'} size={16} />
           </button>
@@ -172,7 +185,10 @@ export function AppLayout({ role }: { role: Role }) {
 
       <div className="app-main">
         <header className="topbar">
-          <div className="mobile-only">
+          <div className="mobile-only mobile-menu-row">
+            <button type="button" className="round-btn menu-btn" onClick={() => setMenuOpen(true)} aria-expanded={menuOpen} aria-controls="app-menu" aria-label={lang === 'fr' ? 'Menu : toutes les pages' : 'Menu: all pages'}>
+              <Icon name="menu" size={20} />
+            </button>
             <MobileBrand role={role} />
           </div>
           {role === 'learner' && <SearchBox />}

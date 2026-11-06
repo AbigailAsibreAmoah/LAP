@@ -78,3 +78,30 @@
 /* The back arrow only exists on phones. */
 .msg-back { display: none; }
 @media (max-width: 640px) { .msg-back { display: inline-flex; flex: none; } }
+
+/* ---------- Phones and tablets: a menu button opens every page (the bottom tabs stay as they are) ---------- */
+.side-close, .menu-scrim { display: none; }
+.mobile-menu-row { display: none; }
+@media (max-width: 900px) {
+  .mobile-menu-row { display: inline-flex; align-items: center; gap: 8px; flex: none; }
+  .menu-btn { flex: none; }
+  .app-shell[data-menu] .sidebar {
+    display: flex;
+    position: fixed;
+    inset: 0 auto 0 0;
+    z-index: 70;
+    width: min(310px, 86vw);
+    height: 100dvh;
+    padding-bottom: calc(24px + env(safe-area-inset-bottom));
+    box-shadow: 18px 0 40px -20px rgba(20, 27, 52, 0.45);
+    animation: menu-in 0.22s ease-out;
+  }
+  .app-shell[data-menu] .side-toggle { display: none; }
+  .app-shell[data-menu] .side-close { display: grid; place-items: center; width: 40px; height: 40px; margin-left: auto; border: 0; border-radius: 12px; background: var(--ivory, #f6efe4); color: var(--navy, #141b34); cursor: pointer; }
+  .app-shell[data-menu] .side-link { min-height: 44px; }
+  .menu-scrim { display: block; position: fixed; inset: 0; z-index: 65; border: 0; background: rgba(20, 27, 52, 0.42); cursor: pointer; animation: scrim-in 0.2s ease-out; }
+  .app-shell[data-menu] { overflow: hidden; }
+}
+@keyframes menu-in { from { transform: translateX(-100%); } }
+@keyframes scrim-in { from { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .app-shell[data-menu] .sidebar, .menu-scrim { animation: none; } }

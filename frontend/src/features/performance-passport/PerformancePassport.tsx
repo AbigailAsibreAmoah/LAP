@@ -1,10 +1,10 @@
 import { type Milestone } from '@laporte/shared';
-import { AnimatePresence, motion, useInView, useReducedMotion } from 'motion/react';
+import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import { useEffect, useRef, useState } from 'react';
 import { Avatar } from '../../components/3d/Portrait';
-import { ProgressRing, Token } from '../../components/3d/Depth';
+import { ProgressRing } from '../../components/3d/Depth';
 import { AnimatedBar } from '../../components/animations/Reveal';
-import { ease, spring } from '../../components/animations/motion';
+import { ease } from '../../components/animations/motion';
 import { StatusBadge } from '../../components/ui/Controls';
 import { Icon, type IconName } from '../../components/ui/Icon';
 import { Drawer, Modal } from '../../components/ui/Overlay';
@@ -13,8 +13,8 @@ import { useIsMobile } from '../../hooks/useMediaQuery';
 import { useI18n } from '../../i18n/I18nProvider';
 import { useStore } from '../../state/AppStore';
 import { formatDate } from '../../utils/format';
+import { JourneyMap } from './JourneyMap';
 
-const VB = { w: 1000, h: 560 };
 const KIND_ICON: Record<string, IconName> = { video: 'video', reading: 'book', quiz: 'quiz', speaking: 'mic', assignment: 'edit', live: 'meet' };
 
 export function PerformancePassport({ readOnly }: { readOnly?: boolean }) {
@@ -28,18 +28,15 @@ export function PerformancePassport({ readOnly }: { readOnly?: boolean }) {
   useEffect(() => {
     const el = mapRef.current;
     if (!el || typeof ResizeObserver === 'undefined') return;
-    const ro = new ResizeObserver(([entry]) => setNarrow(entry.contentRect.width < 760));
+    const ro = new ResizeObserver(([entry]) => setNarrow(entry.contentRect.width < 640));
     ro.observe(el);
     return () => ro.disconnect();
   }, []);
   const mobile = isMobile || narrow;
-  const reduce = useReducedMotion();
   const { milestones, learner, actions } = useStore();
   const [open, setOpen] = useState<Milestone | null>(null);
   const [report, setReport] = useState(false);
   const [celebrate, setCelebrate] = useState<string | null>(null);
-  const ref = useRef<HTMLDivElement>(null);
-  const inView = useInView(ref, { once: true, margin: '-80px' });
 
   const done = milestones.filter((m) => m.status === 'completed').length;
   const statusLabel = (m: Milestone) =>
@@ -54,7 +51,7 @@ export function PerformancePassport({ readOnly }: { readOnly?: boolean }) {
   };
 
   return (
-    <div ref={ref} className="passport-grid">
+    <div className="passport-grid">
       {/* Passport cover */}
       <div className="card card-navy" style={{ ['--pad' as string]: '28px', display: 'flex', flexDirection: 'column', gap: 22, overflow: 'hidden' }}>
         <svg aria-hidden viewBox="0 0 200 200" style={{ position: 'absolute', right: -60, bottom: -60, width: 260, opacity: 0.08 }}>
@@ -84,13 +81,9 @@ export function PerformancePassport({ readOnly }: { readOnly?: boolean }) {
         <p className="tiny" style={{ color: 'rgba(243,238,230,.55)' }}>{t('passport.disclaimer')}</p>
       </div>
 
-      {/* Journey */}
-      <div ref={mapRef} className="card" style={{ ['--pad' as string]: mobile ? '20px' : '0', position: 'relative', overflow: 'hidden', background: 'linear-gradient(170deg, #FBF5EC 0%, #F3E7D6 55%, #EBDCC5 100%)', minHeight: mobile ? undefined : 520 }}>
-        {mobile ? (
-          <VerticalJourney milestones={milestones} onOpen={setOpen} statusLabel={statusLabel} celebrate={celebrate} />
-        ) : (
-          <CurvedJourney milestones={milestones} onOpen={setOpen} statusLabel={statusLabel} inView={inView} reduce={Boolean(reduce)} celebrate={celebrate} />
-        )}
+      {/* Journey: a traveller's map of the CEFR levels */}
+      <div ref={mapRef} className="card jm-card" style={{ ['--pad' as string]: '0', overflow: 'hidden' }}>
+        <JourneyMap milestones={milestones} learner={learner} onOpenMilestone={setOpen} celebrate={celebrate} readOnly={readOnly} tall={mobile} extra={() => <Celebration />} />
       </div>
 
       <Drawer open={!!open} onClose={() => setOpen(null)} title={open ? l(open.title) : ''}>
@@ -185,142 +178,6 @@ export function PerformancePassport({ readOnly }: { readOnly?: boolean }) {
   );
 }
 
-type JourneyProps = {
-  milestones: Milestone[];
-  onOpen: (m: Milestone) => void;
-  statusLabel: (m: Milestone) => string;
-  celebrate: string | null;
-};
-
-function CurvedJourney({ milestones, onOpen, statusLabel, inView, reduce, celebrate }: JourneyProps & { inView: boolean; reduce: boolean }) {
-  const { l } = useI18n();
-  const { learner } = useStore();
-  const n = milestones.length;
-  // Evenly spaced stations on a gently rising band keep cards from colliding.
-  const points = milestones.map((_, i) => ({ x: 8 + (i * 80) / Math.max(1, n - 1), y: 68 - (i * 34) / Math.max(1, n - 1) }));
-  const doneCount = milestones.filter((m) => m.status === 'completed').length;
-  const activeIndex = milestones.findIndex((m) => m.status === 'in-progress');
-  const reachedIndex = activeIndex >= 0 ? activeIndex : doneCount - 1;
-  const full = smoothPath([{ x: 0, y: points[0].y + 4 }, ...points, { x: 100, y: points[n - 1].y - 6 }]);
-  const progress = smoothPath([{ x: 0, y: points[0].y + 4 }, ...points.slice(0, reachedIndex + 1)]);
-
-  return (
-    <div style={{ position: 'absolute', inset: 0 }}>
-      {/* distant city & horizon for a sense of destination */}
-      <svg aria-hidden viewBox="0 0 1000 560" preserveAspectRatio="xMidYMid slice" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }}>
-        <g fill="#C9B391" opacity=".35">
-          <path d="M780 120h20V70h14v50h16V40l20-24 20 24v80h18V84h24v76H780z" />
-          <path d="M700 160h30v-40a15 15 0 0 1 30 0v40h20v20h-80z" />
-        </g>
-        <ellipse cx="880" cy="60" rx="140" ry="50" fill="#FFF3DA" opacity=".6" />
-      </svg>
-      <svg viewBox={`0 0 ${VB.w} ${VB.h}`} preserveAspectRatio="none" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }} aria-hidden>
-        <path d={full} fill="none" stroke="#B9A07A" strokeWidth="2" strokeDasharray="2 10" strokeLinecap="round" vectorEffect="non-scaling-stroke" opacity=".7" />
-        <path d={full} fill="none" stroke="rgba(110,22,48,.08)" strokeWidth="22" strokeLinecap="round" vectorEffect="non-scaling-stroke" />
-        <motion.path
-          d={progress}
-          fill="none"
-          stroke="#C49A5A"
-          strokeWidth="4"
-          strokeLinecap="round"
-          vectorEffect="non-scaling-stroke"
-          initial={{ pathLength: reduce ? 1 : 0 }}
-          animate={{ pathLength: inView ? 1 : 0 }}
-          transition={{ duration: 2.2, ease: ease.inOut, delay: 0.3 }}
-        />
-      </svg>
-
-      {points.map((pt, i) => {
-        const m = milestones[i];
-        const above = i % 2 === 0;
-        const state = m.status === 'completed' ? 'earned' : m.status === 'in-progress' ? 'active' : 'locked';
-        const lit = inView || reduce;
-        return (
-          <div key={m.id} style={{ position: 'absolute', left: `${pt.x}%`, top: `${pt.y}%`, transform: 'translate(-50%, -50%)', zIndex: 2 }}>
-            <motion.button
-              onClick={() => onOpen(m)}
-              aria-label={`${l(m.title)} — ${statusLabel(m)}`}
-              style={{ background: 'none', border: 0, padding: 0, cursor: 'pointer', display: 'block', position: 'relative' }}
-              initial={{ scale: reduce ? 1 : 0.4, opacity: reduce ? 1 : 0 }}
-              animate={lit ? { scale: 1, opacity: 1 } : {}}
-              transition={{ ...spring.snappy, delay: reduce ? 0 : 0.5 + (i / n) * 2.2 }}
-              whileHover={{ scale: 1.08 }}
-            >
-              {state === 'active' && !reduce && (
-                <motion.span aria-hidden style={{ position: 'absolute', inset: -8, borderRadius: '50%', border: '2px solid var(--burgundy)' }} animate={{ scale: [1, 1.35], opacity: [0.6, 0] }} transition={{ duration: 1.8, repeat: Infinity, ease: 'easeOut' }} />
-              )}
-              <Token state={state} size={48}>
-                <Icon name={m.status === 'completed' ? 'check' : m.status === 'in-progress' ? 'clock' : 'lock'} size={20} stroke={2.2} />
-              </Token>
-              {celebrate === m.id && <Celebration />}
-            </motion.button>
-
-            <motion.button
-              onClick={() => onOpen(m)}
-              className="card card-interactive"
-              tabIndex={-1}
-              aria-hidden
-              style={{
-                position: 'absolute',
-                left: '50%',
-                [above ? 'bottom' : 'top']: 'calc(100% + 10px)',
-                x: pt.x < 16 ? -30 : pt.x > 84 ? 'calc(-100% + 30px)' : '-50%',
-                width: 164,
-                ['--pad' as string]: '10px 12px',
-                textAlign: 'left',
-                cursor: 'pointer',
-              }}
-              initial={{ opacity: 0, y: above ? 10 : -10 }}
-              animate={lit ? { opacity: 1, y: 0 } : {}}
-              transition={{ ...spring.settle, delay: reduce ? 0 : 0.7 + (i / n) * 2.2 }}
-            >
-              <div style={{ fontWeight: 700, fontSize: 13.5, color: 'var(--navy)' }}>{l(m.title)}</div>
-              <div className="row" style={{ ['--gap' as string]: '6px', marginTop: 6 }}>
-                <StatusBadge status={m.status}>{statusLabel(m)}</StatusBadge>
-                <span className="tiny muted">{m.level}</span>
-              </div>
-            </motion.button>
-
-            {m.status === 'in-progress' && (
-              <motion.div style={{ position: 'absolute', left: 30, [above ? 'top' : 'bottom']: 18 }} initial={{ opacity: 0, y: 8 }} animate={lit ? { opacity: 1, y: 0 } : {}} transition={{ delay: reduce ? 0 : 2.6, ...spring.settle }} aria-hidden>
-                <Avatar spec={learner.portrait} size={40} expression="smile" />
-              </motion.div>
-            )}
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
-function VerticalJourney({ milestones, onOpen, statusLabel, celebrate }: JourneyProps) {
-  const { l } = useI18n();
-  return (
-    <ol style={{ listStyle: 'none', margin: 0, padding: 0, position: 'relative' }}>
-      <span aria-hidden style={{ position: 'absolute', left: 23, top: 20, bottom: 20, width: 2, background: 'linear-gradient(var(--gold) 0 45%, var(--ivory-300) 45%)' }} />
-      {milestones.map((m, i) => (
-        <motion.li key={m.id} initial={{ opacity: 0, x: -12 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.08 }} style={{ position: 'relative', padding: '10px 0' }}>
-          <button onClick={() => onOpen(m)} className="row" style={{ background: 'none', border: 0, padding: 0, cursor: 'pointer', textAlign: 'left', width: '100%', flexWrap: 'nowrap', ['--gap' as string]: '14px' }}>
-            <span style={{ position: 'relative' }}>
-              <Token state={m.status === 'completed' ? 'earned' : m.status === 'in-progress' ? 'active' : 'locked'} size={48}>
-                <Icon name={m.status === 'completed' ? 'check' : m.status === 'in-progress' ? 'clock' : 'lock'} size={20} stroke={2.2} />
-              </Token>
-              {celebrate === m.id && <Celebration />}
-            </span>
-            <span className="card" style={{ ['--pad' as string]: '10px 12px', flex: 1 }}>
-              <span style={{ display: 'block', fontWeight: 700, color: 'var(--navy)' }}>{l(m.title)}</span>
-              <span className="row" style={{ ['--gap' as string]: '6px', marginTop: 4 }}>
-                <StatusBadge status={m.status}>{statusLabel(m)}</StatusBadge>
-                <span className="tiny muted">{m.level}</span>
-              </span>
-            </span>
-          </button>
-        </motion.li>
-      ))}
-    </ol>
-  );
-}
-
 /** Restrained celebration: a brief ring of gold motes, skipped for reduced motion. */
 function Celebration() {
   const reduce = useReducedMotion();
@@ -343,18 +200,4 @@ function Celebration() {
       </span>
     </AnimatePresence>
   );
-}
-
-/** Catmull-Rom spline through percentage points, in viewBox units. */
-function smoothPath(pts: { x: number; y: number }[]) {
-  const P = pts.map((p) => ({ x: (p.x / 100) * VB.w, y: (p.y / 100) * VB.h }));
-  let d = `M${P[0].x},${P[0].y}`;
-  for (let i = 0; i < P.length - 1; i++) {
-    const p0 = P[i - 1] ?? P[i];
-    const p1 = P[i];
-    const p2 = P[i + 1];
-    const p3 = P[i + 2] ?? p2;
-    d += ` C${p1.x + (p2.x - p0.x) / 6},${p1.y + (p2.y - p0.y) / 6} ${p2.x - (p3.x - p1.x) / 6},${p2.y - (p3.y - p1.y) / 6} ${p2.x},${p2.y}`;
-  }
-  return d;
 }
