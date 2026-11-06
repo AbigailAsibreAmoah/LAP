@@ -2,7 +2,7 @@
 // is reachable and falls back to the offline demo adapter otherwise.
 import { buildPlacementResult, communityOps, ContentError, contentOps, kidOps, reviewOps, type ReviewGrade, DEMO_LEARNER_ID, nowIso, type AppNotification, type Booking, type Cohort, type ContentState, type ContentUser, type LessonInput, type LessonPatch, type Learner, type MediaAsset, type MessageThread, type PackInput, type Payment, type PaymentMethod, type PlacementInput, type PlacementResult, type QuestId, type SessionPurpose, type SpeakingFeedback, type TransitionAction, type VocabEntry, type PlacementItem, newLearner, normEmail, validEmail, type SignUpInput, cafeOps, type CafeOp } from '@laporte/shared';
 import { demoAdapter } from './demo/demoAdapter';
-import { ApiError, detectApi, markApiUnavailable, request, upload } from './http';
+import { ApiError, demoOnly, detectApi, markApiAvailable, markApiUnavailable, request, upload } from './http';
 
 export interface ServerSnapshot {
   learners: Learner[];
@@ -153,10 +153,14 @@ export const api = {
    * state (production default), use the offline adapter for everything rather
    * than mixing server writes with local state.
    */
-  async snapshot(): Promise<ServerSnapshot | null> {
-    if (!(await detectApi())) return null;
+  async snapshot(userId?: string): Promise<ServerSnapshot | null> {
+    if (demoOnly()) return null;
     try {
-      return await request<ServerSnapshot>('/demo/snapshot');
+      // One request on startup (no separate health check). A generous timeout: a sleeping
+      // server (cold start) can take a few seconds to wake.
+      const snap = await request<ServerSnapshot>('/demo/snapshot', { userId, timeoutMs: 8000 });
+      markApiAvailable();
+      return snap;
     } catch {
       markApiUnavailable();
       return null;

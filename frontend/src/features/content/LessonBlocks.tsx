@@ -54,7 +54,7 @@ export function MediaPlayer({ asset, lesson }: { asset: MediaAsset; lesson?: Les
           <video src={asset.url} controls preload="metadata" playsInline aria-label={asset.title} />
         ) : (
           <div className="video-pending">
-            <img className="video-pending-poster" src="/images/lesson-tutor-video.jpg" alt="" aria-hidden />
+            <img className="video-pending-poster" src="/images/lesson-tutor-video.webp" alt="" aria-hidden />
             <div className="video-pending-copy">
               <span className="chip" style={{ background: 'rgba(255,255,255,.92)' }}><Icon name="video" size={13} /> {formatClip(asset.durationSec)}</span>
               <strong>{fr ? 'Vidéo en production' : 'Video in production'}</strong>

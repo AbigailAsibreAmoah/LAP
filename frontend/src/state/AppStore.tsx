@@ -80,13 +80,16 @@ function useStoreValue() {
   serverRef.current = server;
 
   // Hydrate from the backend when it is reachable; otherwise keep the local demo state.
+  const fetchedFor = useRef<string | null>(null);
   useEffect(() => {
     let cancelled = false;
+    const who = userRef.current;
     api
-      .snapshot()
+      .snapshot(who?.id)
       .then((snap) => {
         if (cancelled) return;
         if (snap) {
+          fetchedFor.current = who?.role ?? null;
           setServer(snap);
           setConnection('api');
         } else setConnection('offline');
@@ -119,6 +122,8 @@ function useStoreValue() {
   // In API mode the server returns only what this role may see, so refetch when the role changes.
   useEffect(() => {
     if (connection !== 'api') return;
+    if (fetchedFor.current === local.role) return; // the startup snapshot already holds this role's view
+    fetchedFor.current = local.role;
     let cancelled = false;
     api.content
       .fetch(user)

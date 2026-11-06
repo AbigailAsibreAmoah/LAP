@@ -115,3 +115,14 @@ describe('live class games', () => {
     expect((await request(app).post(`/api/games/${another.body.code}/join`).send({ kidId: 'kid-kwame' })).status).toBe(403);
   });
 });
+
+describe('startup snapshot privacy', () => {
+  it('only contains what the requesting user may see', async () => {
+    const mine = await request(app).get('/api/demo/snapshot');
+    expect(mine.status).toBe(200);
+    expect(mine.body.content.kids.map((k: { id: string }) => k.id)).toContain('kid-kwame');
+    // Another family's snapshot must not include Kwame's profile.
+    const other = await request(app).get('/api/demo/snapshot').set('x-demo-user', 'lrn-kofi');
+    expect(other.body.content.kids).toEqual([]);
+  });
+});

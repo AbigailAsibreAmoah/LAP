@@ -57,7 +57,7 @@ export function HeroBuddy({ firstName, rank, of, points, level, cheer }: { first
         animate={{ opacity: 1, y: 0, scale: 1 }}
         transition={{ type: 'spring', stiffness: 160, damping: 20, delay: 0.2 }}
       >
-        <motion.img src="/images/hero-student.png" alt="" width={1024} height={1024} className="hero-student" animate={body} style={{ originY: 1 }} />
+        <motion.img src="/images/hero-student.webp" alt="" width={640} height={640} loading="lazy" decoding="async" className="hero-student" animate={body} style={{ originY: 1 }} />
       </motion.button>
 
       {/* Confetti burst (CSS-driven so it runs everywhere; skipped with reduced motion) */}

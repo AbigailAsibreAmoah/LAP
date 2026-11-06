@@ -163,7 +163,7 @@ export function DashboardPage() {
   // Continue learning: the current lesson and the two that follow it in the course.
   const courseLessons = course.modules.flatMap((m) => m.lessons.map((x) => ({ ...x, module: l(m.title) })));
   const at = courseLessons.findIndex((x) => x.id === RESUME_LESSON);
-  const thumbs = ['/images/lesson-tutor-video.jpg', '/images/lesson-tutor-business.jpg', '/images/lesson-tutor-explain.jpg'];
+  const thumbs = ['/images/lesson-tutor-video.webp', '/images/lesson-tutor-business.webp', '/images/lesson-tutor-explain.webp'];
   const tiles = courseLessons.slice(at, at + 3);
 
   // Week planner, built from real bookings and today's due work.

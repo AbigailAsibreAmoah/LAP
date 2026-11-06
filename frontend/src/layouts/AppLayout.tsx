@@ -121,7 +121,13 @@ export function AppLayout({ role }: { role: Role }) {
     if (!menuOpen) return;
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setMenuOpen(false);
     window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
+    // Keep the page behind the open menu from scrolling.
+    const before = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      window.removeEventListener('keydown', onKey);
+      document.body.style.overflow = before;
+    };
   }, [menuOpen]);
 
   if (startPending && !hasPlacement) return <Navigate to="/start" replace />;

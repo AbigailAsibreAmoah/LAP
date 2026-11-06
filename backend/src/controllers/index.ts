@@ -1,4 +1,4 @@
-import { ownedBy } from '@laporte/shared';
+import { ownedBy, visibleContent } from '@laporte/shared';
 import type { Request, Response } from 'express';
 import { env } from '../config/env';
 import { bookingRepository } from '../repositories/bookingRepository';
@@ -16,11 +16,12 @@ import { notFound } from '../utils/errors';
 export const systemController = {
   health: (_req: Request, res: Response) =>
     res.json({ status: 'ok', mode: 'demo', persistence: { demo: 'in-memory (resets on restart)', content: contentStore.persistence }, providers: env.providers }),
-  snapshot: (_req: Request, res: Response) => res.json({ ...store, content: contentStore.get() }),
-  reset: (_req: Request, res: Response) => {
+  // Only what the requesting user may see (the same filter as /api/content), so one request is enough on startup.
+  snapshot: (req: Request, res: Response) => res.json({ ...store, content: visibleContent(contentStore.get(), req.demoUser) }),
+  reset: (req: Request, res: Response) => {
     resetDemoStore();
     contentStore.reset();
-    res.json({ ...store, content: contentStore.get() });
+    res.json({ ...store, content: visibleContent(contentStore.get(), req.demoUser) });
   },
 };
 

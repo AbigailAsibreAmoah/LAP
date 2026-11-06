@@ -14,6 +14,38 @@ function hasWebGL() {
   }
 }
 
+/**
+ * Phones, low-power devices and data-saver connections get the illustrated door: three.js is
+ * about 240 KB compressed and takes seconds to start on a mid-range phone.
+ */
+function preferLite() {
+  try {
+    const nav = navigator as Navigator & { deviceMemory?: number; connection?: { saveData?: boolean; effectiveType?: string } };
+    if (window.matchMedia('(max-width: 760px)').matches) return true;
+    if (nav.connection?.saveData || /(^|-)2g|3g/.test(nav.connection?.effectiveType ?? '')) return true;
+    if ((nav.deviceMemory ?? 8) <= 4 || (nav.hardwareConcurrency ?? 8) <= 4) return true;
+    return false;
+  } catch {
+    return false;
+  }
+}
+
+/** Waits until the browser is idle (the page has painted) before mounting something heavy. */
+function useIdle(enabled: boolean) {
+  const [idle, setIdle] = useState(false);
+  useEffect(() => {
+    if (!enabled) return;
+    const w = window as Window & { requestIdleCallback?: (cb: () => void, o?: { timeout: number }) => number; cancelIdleCallback?: (id: number) => void };
+    if (w.requestIdleCallback) {
+      const id = w.requestIdleCallback(() => setIdle(true), { timeout: 2000 });
+      return () => w.cancelIdleCallback?.(id);
+    }
+    const id = window.setTimeout(() => setIdle(true), 900);
+    return () => window.clearTimeout(id);
+  }, [enabled]);
+  return idle;
+}
+
 /** Falls back to the illustrated door if the GPU context fails at runtime. */
 class SceneBoundary extends Component<{ fallback: ReactNode; children: ReactNode }, { failed: boolean }> {
   state = { failed: false };
@@ -34,7 +66,8 @@ const CLOSED_BEAT_MS = 650;
  * only for browsers where WebGL is unavailable or fails.
  */
 export function Doorway3D({ open, still, variant = 'room', fallbackWidth = 260 }: { open: boolean; still: boolean; variant?: DoorwayVariant; fallbackWidth?: number }) {
-  const [webgl] = useState(hasWebGL);
+  const [webgl] = useState(() => !preferLite() && hasWebGL());
+  const idle = useIdle(webgl);
   const [ready, setReady] = useState(false);
   const [settled, setSettled] = useState(still);
   const fallback = (
@@ -50,6 +83,7 @@ export function Doorway3D({ open, still, variant = 'room', fallbackWidth = 260 }
   }, [ready, settled]);
 
   if (!webgl) return fallback;
+  if (!idle) return null;
 
   const opening = open && settled;
   return (

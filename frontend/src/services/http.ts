@@ -10,8 +10,11 @@ export class ApiError extends Error {
   }
 }
 
-export async function request<T>(path: string, opts: { method?: string; body?: unknown; userId?: string } = {}): Promise<T> {
+export async function request<T>(path: string, opts: { method?: string; body?: unknown; userId?: string; timeoutMs?: number } = {}): Promise<T> {
+  const ctrl = opts.timeoutMs ? new AbortController() : undefined;
+  const timer = ctrl ? setTimeout(() => ctrl.abort(), opts.timeoutMs) : undefined;
   const res = await fetch(`${BASE}${path}`, {
+    signal: ctrl?.signal,
     method: opts.method ?? 'GET',
     headers: {
       'Content-Type': 'application/json',
@@ -19,6 +22,7 @@ export async function request<T>(path: string, opts: { method?: string; body?: u
     },
     body: opts.body === undefined ? undefined : JSON.stringify(opts.body),
   });
+  if (timer) clearTimeout(timer);
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
     throw new ApiError(res.status, data?.error?.code ?? 'http_error', data?.error?.message ?? res.statusText);
@@ -35,6 +39,13 @@ export async function upload<T>(path: string, form: FormData, userId: string): P
 }
 
 let detected: Promise<boolean> | null = null;
+
+/** Records that the backend answered, so later calls skip the health check. */
+export function markApiAvailable() {
+  detected = Promise.resolve(true);
+}
+
+export const demoOnly = () => MODE === 'demo';
 
 /** Forces the offline demo adapter for the rest of the session. */
 export function markApiUnavailable() {

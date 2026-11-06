@@ -12,6 +12,8 @@ import type { Book } from './stories';
 
 type Zone = 'week' | 'library';
 interface Drag { id: string; from: Zone; x: number; y: number; over: Zone | null; w: number }
+// The ghost book is moved directly (no React re-render per pointer move); state only changes
+// when the book is lifted, crosses into another shelf, or is dropped.
 
 const HOLD_MS = 280; // press-and-hold on touch screens before a book lifts
 const MOVE_PX = 8; // how far a mouse moves before a press becomes a drag
@@ -32,6 +34,10 @@ export function KidShelves({ weekly, library, read, title, onOpen, onKeep, onRem
   const press = useRef<{ id: string; from: Zone; x: number; y: number; w: number; touch: boolean; live: boolean; timer?: number } | null>(null);
   const dragRef = useRef<Drag | null>(null);
   dragRef.current = drag;
+  const ghost = useRef<HTMLDivElement>(null);
+  const pos = useRef({ x: 0, y: 0 });
+  const handlers = useRef({ onKeep, onRemove });
+  handlers.current = { onKeep, onRemove };
   const inLibrary = new Set(library.map((b) => b.id));
 
   const zoneAt = (x: number, y: number): Zone | null => {
@@ -43,6 +49,7 @@ export function KidShelves({ weekly, library, read, title, onOpen, onKeep, onRem
     if (!p) return;
     p.live = true;
     navigator.vibrate?.(12);
+    pos.current = { x, y };
     setDrag({ id: p.id, from: p.from, x, y, over: zoneAt(x, y), w: p.w });
   };
 
@@ -56,7 +63,10 @@ export function KidShelves({ weekly, library, read, title, onOpen, onKeep, onRem
         if (far) lift(e.clientX, e.clientY);
         return;
       }
-      setDrag((d) => (d ? { ...d, x: e.clientX, y: e.clientY, over: zoneAt(e.clientX, e.clientY) } : d));
+      pos.current = { x: e.clientX, y: e.clientY };
+      if (ghost.current) { ghost.current.style.left = e.clientX + 'px'; ghost.current.style.top = e.clientY + 'px'; }
+      const over = zoneAt(e.clientX, e.clientY);
+      if (over !== dragRef.current?.over) setDrag((d) => (d ? { ...d, over } : d));
     };
     const end = () => {
       const p = press.current;
@@ -68,8 +78,8 @@ export function KidShelves({ weekly, library, read, title, onOpen, onKeep, onRem
       const swallow = (ev: MouseEvent) => { ev.stopPropagation(); ev.preventDefault(); };
       window.addEventListener('click', swallow, { capture: true, once: true });
       window.setTimeout(() => window.removeEventListener('click', swallow, { capture: true }), 0);
-      if (d.over === 'library' && !inLibraryRef.current.has(d.id)) { onKeep(d.id); setLanded(d.id); window.setTimeout(() => setLanded(null), 900); }
-      if (d.over === 'week' && d.from === 'library') onRemove(d.id);
+      if (d.over === 'library' && !inLibraryRef.current.has(d.id)) { handlers.current.onKeep(d.id); setLanded(d.id); window.setTimeout(() => setLanded(null), 900); }
+      if (d.over === 'week' && d.from === 'library') handlers.current.onRemove(d.id);
       setDrag(null);
     };
     // While a book is lifted on a touch screen, stop the page from scrolling under the finger.
@@ -89,7 +99,7 @@ export function KidShelves({ weekly, library, read, title, onOpen, onKeep, onRem
       window.removeEventListener('keydown', esc);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [onKeep, onRemove]);
+  }, []);
   const inLibraryRef = useRef(inLibrary);
   inLibraryRef.current = inLibrary;
 
@@ -145,7 +155,7 @@ export function KidShelves({ weekly, library, read, title, onOpen, onKeep, onRem
 
       {/* The book following the finger or the mouse */}
       {drag && book && (
-        <div className="bk-ghost" style={{ left: drag.x, top: drag.y, width: Math.min(drag.w, 200) }} aria-hidden>
+        <div ref={ghost} className="bk-ghost" style={{ left: pos.current.x, top: pos.current.y, width: Math.min(drag.w, 200) }} aria-hidden>
           <BookObject book={book} onOpen={() => undefined} />
         </div>
       )}
