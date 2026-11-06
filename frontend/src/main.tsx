@@ -7,6 +7,7 @@ import './styles/access.css';
 import './styles/practice.css';
 import './styles/cafe.css';
 import './styles/books.css';
+import './styles/mobile.css';
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

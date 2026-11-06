@@ -222,7 +222,7 @@ export function WorkspaceShowcase() {
                 aria-label={label}
                 aria-current={s === i}
                 title={label}
-                style={{ width: s === i ? 26 : 10, height: 10, borderRadius: 10, border: 0, cursor: 'pointer', background: s === i ? 'var(--burgundy)' : 'var(--ivory-300)', transition: 'width .35s cubic-bezier(.22,1,.36,1), background .3s', padding: 0 }}
+                style={{ width: s === i ? 26 : 10, height: 10, borderRadius: 999, border: '12px solid transparent', backgroundClip: 'content-box', boxSizing: 'content-box', margin: '0 -8px', cursor: 'pointer', background: s === i ? 'var(--burgundy)' : 'var(--ivory-300)', transition: 'width .35s cubic-bezier(.22,1,.36,1), background .3s', padding: 0 }}
               />
             ))}
           </div>

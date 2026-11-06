@@ -1,6 +1,8 @@
 import { useReducedMotion } from 'motion/react';
 import { useId, type ReactNode } from 'react';
+import { Backdrop, Details, Foreground, NEW_KINDS, TONES, type Tone } from './Backdrops';
 import { Figure, isAdult, type Pose } from './Figure';
+import type { Stage } from './staging';
 import { CAST, type CastMember, type PropName, type SceneKind, type TimeOfDay } from './stories';
 
 /*
@@ -34,7 +36,10 @@ const GROUND: Record<TimeOfDay, { far: string; mid: string; near: string }> = {
   night: { far: '#2C3253', mid: '#343B5E', near: '#252B47' },
 };
 /** Where characters' feet stand (fraction of the height). Furniture and stalls stand in front of them. */
-const FEET: Record<SceneKind, number> = { bedroom: 0.93, classroom: 0.93, market: 0.97, compound: 0.88, savanna: 0.9, coast: 0.9 };
+const FEET: Record<SceneKind, number> = { bedroom: 0.93, classroom: 0.93, market: 0.97, compound: 0.88, savanna: 0.9, coast: 0.9, street: 0.9, pitch: 0.9, garden: 0.92, hill: 0.9, workshop: 0.93, mangrove: 0.92, kitchen: 0.93, festival: 0.9 };
+const INDOOR_KINDS: SceneKind[] = ['bedroom', 'classroom', 'workshop', 'kitchen'];
+/** Base height of a character (feet to the top of the head) before scaling. */
+const figureTop = (adult: boolean) => (adult ? 270 : 210);
 
 /** A pose that tells the story when the page doesn't name one: happy children jump, busy ones walk. */
 function poseFor(c: CastMember, kind: SceneKind, n: number): Pose {
@@ -49,18 +54,29 @@ function poseFor(c: CastMember, kind: SceneKind, n: number): Pose {
   }
 }
 
-export function Scene({ kind, time, props, cast, className, variant = 'cover', live = false }: { kind: SceneKind; time: TimeOfDay; props: PropName[]; cast: CastMember[]; className?: string; variant?: 'cover' | 'page'; live?: boolean }) {
+export function Scene({ kind, time, props, cast, className, variant = 'cover', live = false, stage }: { kind: SceneKind; time: TimeOfDay; props: PropName[]; cast: CastMember[]; className?: string; variant?: 'cover' | 'page'; live?: boolean; stage?: Stage }) {
   const uid = useId().replace(/:/g, '');
   const reduce = useReducedMotion();
   const boil = live && !reduce;
   const has = (p: PropName) => props.includes(p);
-  const indoor = kind === 'bedroom' || kind === 'classroom';
+  const indoor = INDOOR_KINDS.includes(kind);
+  const fresh = NEW_KINDS.includes(kind);
   const page = variant === 'page';
-  const g = GROUND[time];
+  const tone: Tone = TONES[stage?.tone ?? 0];
+  const g = time === 'day' ? { far: tone.far, mid: tone.mid, near: tone.near } : GROUND[time];
+  const framing = stage?.framing ?? 'medium';
+  // Close-ups move the camera in (everything grows from the bottom centre); wide shots keep people small.
+  const zoom = framing === 'close' ? 1.16 : 1;
+  const castScale = framing === 'wide' ? 0.74 : framing === 'close' ? 1.1 : 1;
   const [s1, s2, s3] = (page ? SKY_PAGE : SKY)[time];
-  const leaves = !indoor && time !== 'night' && !has('rain') && (kind === 'savanna' || kind === 'compound');
+  const leaves = !indoor && time !== 'night' && !has('rain') && (kind === 'savanna' || kind === 'compound' || kind === 'garden' || kind === 'hill');
 
-  const back = indoor ? (
+  const back = indoor && fresh ? (
+    <>
+      <Backdrop kind={kind} time={time} uid={uid} tone={tone} />
+      {has('window') && <Window time={time} x={540} y={60} uid={uid} />}
+    </>
+  ) : indoor ? (
     <>
       <rect width={W} height={H} fill={`url(#wall${uid})`} />
       <rect y={H * 0.7} width={W} height={H * 0.3} fill={time === 'night' ? '#4A3A33' : '#C9965F'} />
@@ -86,6 +102,8 @@ export function Scene({ kind, time, props, cast, className, variant = 'cover', l
           {has('pirogueFar') && <g className="sc-bob"><Pirogue x={560} y={HORIZON + 10} scale={0.35} colours={['#C0392B', '#F1C40F', '#1F6B4F']} /></g>}
           <path d={`M0 ${H * 0.74} C 180 ${H * 0.7}, 420 ${H * 0.78}, ${W} ${H * 0.72} L ${W} ${H} L 0 ${H} Z`} fill={time === 'night' ? '#3A3A55' : '#E8C995'} />
         </>
+      ) : fresh ? (
+        <Backdrop kind={kind} time={time} uid={uid} tone={tone} />
       ) : (
         <>
           <path d={`M0 ${HORIZON - 30} C 140 ${HORIZON - 80}, 260 ${HORIZON - 40}, 380 ${HORIZON - 60} S 640 ${HORIZON - 90}, ${W} ${HORIZON - 40} L ${W} ${H} L 0 ${H} Z`} fill={g.far} />
@@ -96,7 +114,7 @@ export function Scene({ kind, time, props, cast, className, variant = 'cover', l
       {kind === 'compound' && (
         <>
           <path d={`M0 ${HORIZON - 10} L ${W} ${HORIZON - 10} L ${W} ${HORIZON + 20} L 0 ${HORIZON + 20} Z`} fill={time === 'night' ? '#3D3550' : '#D3A272'} />
-          {has('house') && <><House x={150} y={HORIZON - 70} night={time === 'night'} /><House x={640} y={HORIZON - 50} night={time === 'night'} small /></>}
+          {has('house') && <><House x={150} y={HORIZON - 70} night={time === 'night'} tone={tone} /><House x={640} y={HORIZON - 50} night={time === 'night'} small tone={tone} /></>}
           {has('well') && <Well x={560} y={HORIZON + 70} />}
           {has('goat') && <g className="sc-nibble"><Goat x={600} y={HORIZON + 95} /></g>}
         </>
@@ -110,6 +128,7 @@ export function Scene({ kind, time, props, cast, className, variant = 'cover', l
       )}
       {kind === 'savanna' && (has('baobab') || has('baobabDry')) && <g className="sc-sway-slow"><Baobab x={560} y={HORIZON + 30} leaves={has('baobab')} night={time === 'night'} /></g>}
       {has('well') && kind === 'savanna' && <Well x={380} y={HORIZON + 80} />}
+      {stage && <Details kind={kind} time={time} seed={stage.details} tone={tone} />}
     </>
   );
 
@@ -122,7 +141,8 @@ export function Scene({ kind, time, props, cast, className, variant = 'cover', l
       {kind === 'coast' && has('pirogue') && <g className="sc-bob"><Pirogue x={W * 0.5} y={H - 70} scale={1} colours={['#1F6B4F', '#F1C40F', '#C0392B']} /></g>}
       {kind === 'coast' && has('nets') && <Nets />}
       {kind === 'coast' && <path d={`M0 ${H * 0.86} C 160 ${H * 0.82}, 360 ${H * 0.9}, 560 ${H * 0.85} S ${W} ${H * 0.84}, ${W} ${H * 0.86} L ${W} ${H} L 0 ${H} Z`} fill={time === 'night' ? '#2F2F48' : '#D9B47A'} />}
-      {!indoor && kind !== 'coast' && <Grass colour={g.near} />}
+      {fresh && <Foreground kind={kind} time={time} tone={tone} />}
+      {!indoor && !fresh && kind !== 'coast' && <Grass colour={g.near} />}
     </>
   );
 
@@ -130,12 +150,16 @@ export function Scene({ kind, time, props, cast, className, variant = 'cover', l
     <g className="sc-noink">
       {cast.map((c, i) => {
         const adult = isAdult(c.who);
-        const s = (c.size / 22) * (adult ? 1.3 : 1.5 * (indoor ? 1.1 : 1));
-        const x = (c.x / 100) * W;
+        // Closer shots gather people towards the middle, so the page crop never cuts anyone off.
+        const gather = framing === 'close' ? 0.66 : framing === 'medium' ? 0.84 : 1;
+        const x = W / 2 + ((c.x / 100) * W - W / 2) * gather;
         const y = FEET[kind] * H;
+        const wanted = (c.size / 22) * (adult ? 1.3 : 1.5 * (indoor ? 1.1 : 1)) * castScale;
+        const room = ((H - 12) / zoom - (H - y)) / figureTop(adult);
+        const s = Math.min(wanted, room);
         return (
           <g key={i} transform={`translate(${x} ${y}) scale(${c.flip ? -s : s} ${s})`} style={{ ['--fg-delay' as string]: `${i * 0.23}s` }}>
-            <Figure who={c.who} spec={CAST[c.who]} expression={c.expression ?? 'smile'} pose={poseFor(c, kind, cast.length)} uid={`${uid}${i}`} />
+            <Figure who={c.who} spec={CAST[c.who]} expression={c.expression ?? 'smile'} pose={c.pose ?? poseFor(c, kind, cast.length)} uid={`${uid}${i}`} />
           </g>
         );
       })}
@@ -168,9 +192,11 @@ export function Scene({ kind, time, props, cast, className, variant = 'cover', l
         </defs>
         <g>
           <g className="sc-ink" filter={`url(#paint${uid})`}>
-            {back}
-            {people}
-            {front}
+            <g transform={`${stage?.mirror ? `translate(${W} 0) scale(-1 1) ` : ''}translate(${W / 2} ${H}) scale(${zoom}) translate(${-W / 2} ${-H})`}>
+              {back}
+              {people}
+              {front}
+            </g>
             {has('rain') && <Rain />}
             {leaves && <Leaves />}
           </g>
@@ -292,17 +318,30 @@ function Baobab({ x, y, leaves, night }: { x: number; y: number; leaves: boolean
     </G>
   );
 }
-function House({ x, y, night, small }: { x: number; y: number; night: boolean; small?: boolean }) {
+function House({ x, y, night, small, tone }: { x: number; y: number; night: boolean; small?: boolean; tone?: Tone }) {
+  const wall = night ? '#5A4636' : tone?.wall ?? '#C9875A';
+  const metal = tone?.metalRoof;
+  const roof = night ? '#5E5233' : metal ? '#9AA5AE' : '#D8B26A';
+  const roofLine = night ? '#4A4129' : metal ? '#6F7A84' : '#B38E4F';
   return (
     <G x={x} y={y} s={small ? 0.75 : 1}>
       <ellipse cx="0" cy="96" rx="96" ry="10" fill="rgba(0,0,0,.15)" />
-      <rect x="-80" y="10" width="160" height="86" rx="6" fill={night ? '#5A4636' : '#C9875A'} />
+      <rect x="-80" y="10" width="160" height="86" rx="6" fill={wall} />
       <rect x="-80" y="10" width="160" height="10" fill="rgba(0,0,0,.08)" />
-      <path d="M-104 16 L 0 -70 L 104 16 Z" fill={night ? '#5E5233' : '#D8B26A'} />
-      <path d="M-104 16 L 0 -70 L 104 16" stroke={night ? '#4A4129' : '#B38E4F'} strokeWidth="4" fill="none" />
-      {[-60, -30, 0, 30, 60].map((lx) => <line key={lx} x1={lx * 0.9} y1={-40 + Math.abs(lx) * 0.5} x2={lx * 1.6} y2="14" stroke={night ? '#4A4129' : '#B38E4F'} strokeWidth="2" opacity="0.6" />)}
-      <rect x="-20" y="40" width="40" height="56" rx="18" fill={night ? '#2A1E16' : '#6E4426'} />
-      {night && <rect x="34" y="34" width="26" height="22" rx="4" fill="#FFD27A" opacity="0.85" />}
+      {metal ? (
+        <>
+          <path d="M-96 18 L -70 -40 L 70 -40 L 96 18 Z" fill={roof} />
+          {[-60, -36, -12, 12, 36, 60].map((lx) => <line key={lx} x1={lx} y1="-38" x2={lx * 1.3} y2="16" stroke={roofLine} strokeWidth="2" />)}
+        </>
+      ) : (
+        <>
+          <path d="M-104 16 L 0 -70 L 104 16 Z" fill={roof} />
+          <path d="M-104 16 L 0 -70 L 104 16" stroke={roofLine} strokeWidth="4" fill="none" />
+          {[-60, -30, 0, 30, 60].map((lx) => <line key={lx} x1={lx * 0.9} y1={-40 + Math.abs(lx) * 0.5} x2={lx * 1.6} y2="14" stroke={roofLine} strokeWidth="2" opacity="0.6" />)}
+        </>
+      )}
+      <rect x="-20" y="40" width="40" height="56" rx="18" fill={night ? '#2A1E16' : tone?.door ?? '#6E4426'} />
+      <rect x="34" y="34" width="26" height="22" rx="4" fill={night ? '#FFD27A' : '#3C5A78'} opacity={night ? 0.85 : 0.7} />
     </G>
   );
 }

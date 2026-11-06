@@ -1,0 +1,80 @@
+/* ======================= Phones: comfortable reading and tapping on every page =======================
+ * Loaded last. The bottom tab bar (.bottom-nav) is deliberately left exactly as it is.
+ */
+
+@media (max-width: 640px) {
+  /* ---------- Small print stays readable (at least 12px) ---------- */
+  .tiny, .kicker, .eyebrow, .demo-tag, .status, .content-status, .chart-axis, .countdown span, .rail-note,
+  .hf-kicker, .buddy-card-kicker, .kid-book-read, .cafe-sub, .quest-points, .pill-link, .loc-input > span, dd {
+    font-size: max(12px, 0.8rem) !important;
+  }
+  .kg-stars, .kg-stars span { font-size: 13px; }
+
+  /* ---------- Easy to tap (about 36–40px, the size of a fingertip) ---------- */
+  .btn { max-width: 100%; white-space: normal; text-align: center; }
+  .btn-sm { min-height: 38px; }
+  .hint { width: 32px; height: 32px; margin: -5px; }
+  .pill-link { min-height: 36px; padding: 8px 14px; }
+  button.chip, .reaction-chip { min-height: 36px; padding-inline: 12px; }
+  input[type='checkbox'], input[type='radio'] { width: 20px; height: 20px; flex: none; }
+  .site-footer a { display: inline-block; padding: 7px 0; }
+
+  /* ---------- Public site: the red strip shows one message, no sideways scroll ---------- */
+  .utility-bar .desktop-only, .utility-bar .utility-right { display: none; }
+  .utility-inner { justify-content: center; overflow: hidden; white-space: nowrap; }
+
+  /* ---------- Learner dashboard: the "resume" card uses the full width ---------- */
+  .dash-hero-copy { max-width: none !important; }
+  .dash-hero h1 { font-size: 1.55rem; }
+
+  /* ---------- Parent's La Porte Kids page ---------- */
+  .kid-overview { flex-direction: column; align-items: flex-start; }
+  .kid-overview > div { width: 100%; }
+  .kid-overview > .btn { width: 100%; justify-content: center; }
+  .kid-kpis { gap: 8px 16px; }
+
+  /* ---------- Child mode ---------- */
+  .kid-mode { overflow-x: hidden; }
+  .kid-top { flex-wrap: wrap; gap: 8px; }
+  .kid-brand { font-size: 16px; }
+  .kid-hero { flex-wrap: wrap; gap: 12px; padding: 18px; }
+  .kid-hero > div { flex: 1 1 170px; min-width: 0; }
+  .kid-hello { font-size: 28px; }
+  .kid-live-btn { width: 100%; justify-content: center; }
+  .bk-shelf { padding: 22px 12px 26px; border-radius: 22px; }
+  .bk-shelf-head { flex-direction: column; align-items: flex-start; gap: 2px; }
+  .bk-shelf-head h2 { font-size: 22px; }
+  .bk-fan { padding-top: 14px; }
+  .bk-toolbar { flex-wrap: wrap; gap: 8px; }
+  .bk-toolbar .bk-progress { order: 3; flex-basis: 100%; }
+  .bk-controls { gap: 8px; }
+}
+
+/* Very narrow phones (≤ 360px): a little less padding everywhere. */
+@media (max-width: 360px) {
+  .container { padding-inline: 14px; }
+  .card { padding: 16px; }
+}
+
+/* Parent's "Progress by world": the five games move under the world's name on phones. */
+@media (max-width: 640px) {
+  .kid-world-row { grid-template-columns: 36px minmax(0, 1fr) 24px; row-gap: 6px; }
+  .kid-world-row .kid-world-games { grid-column: 1 / -1; justify-content: space-between; }
+}
+
+@media (max-width: 640px) {
+  /* Messages: the list first; tapping a conversation opens it full screen with a back arrow. */
+  .messages-grid { grid-template-rows: 1fr; height: calc(100dvh - 330px); min-height: 420px; }
+  .messages-grid > :first-child { max-height: none; border-bottom: 0; }
+  .messages-grid[data-open] > :first-child { display: none; }
+  .messages-grid:not([data-open]) > :last-child { display: none !important; }
+  .messages-grid > :last-child { min-height: 0; }
+
+  /* Number tiles (admin overview and similar): two per row instead of one per screen. */
+  .grid.grid-4:has(> .stat) { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+  .grid.grid-4 > .stat { padding: 16px; }
+  .grid.grid-4 > .stat .stat-value { font-size: 1.7rem; }
+}
+/* The back arrow only exists on phones. */
+.msg-back { display: none; }
+@media (max-width: 640px) { .msg-back { display: inline-flex; flex: none; } }

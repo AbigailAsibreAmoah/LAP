@@ -35,6 +35,8 @@ export function MessagesPage() {
   // Opening a classmate with no conversation yet shows a fresh "new conversation" pane.
   const [newWith, setNewWith] = useState<string | null>(withId && !threadWith(withId) ? withId : null);
   const [call, setCall] = useState<CallKind | null>(null);
+  // On phones the list and the conversation take turns on screen, like a messaging app.
+  const [openOnPhone, setOpenOnPhone] = useState(Boolean(params.get('thread') || withId));
   const [reporting, setReporting] = useState<{ messageId: string; body: string; from: string } | null>(null);
   const [reason, setReason] = useState<ReportReason>('contact');
   const [reportNote, setReportNote] = useState('');
@@ -42,6 +44,7 @@ export function MessagesPage() {
   const freshMates = userId.startsWith('lrn-') ? classmatesOf(content, userId).filter((m) => !threadWith(m.id)) : [];
   useEffect(() => {
     if (!withId) return;
+    setOpenOnPhone(true);
     const existing = threadWith(withId);
     if (existing) {
       setActiveId(existing.id);
@@ -77,6 +80,7 @@ export function MessagesPage() {
   const select = (id: string) => {
     setActiveId(id);
     setNewWith(null);
+    setOpenOnPhone(true);
     if (withId) setParams({}, { replace: true });
   };
   // Classmates (and followed learners) can be called; tutors and support use booked sessions.
@@ -97,7 +101,7 @@ export function MessagesPage() {
       {!mine.length && !freshMates.length ? (
         <div className="card"><EmptyState icon="message" title={lang === 'fr' ? 'Aucune conversation' : 'No conversations yet'} /></div>
       ) : (
-        <div className="messages-grid card" style={{ ['--pad' as string]: '0', overflow: 'hidden' }}>
+        <div className="messages-grid card" data-open={openOnPhone || undefined} style={{ ['--pad' as string]: '0', overflow: 'hidden' }}>
           <ul style={{ borderRight: '1px solid var(--line)', overflowY: 'auto', listStyle: 'none', margin: 0, padding: 0 }} aria-label={t('msg.title')}>
             {ordered.filter((th) => rank(th) < 2).map((th) => {
               const other = person(th.participantIds.find((p) => p !== userId)!);
@@ -117,7 +121,7 @@ export function MessagesPage() {
               );
             })}
             {freshMates.map((m) => (
-              <li key={m.id}><button onClick={() => { setNewWith(m.id); setDraft(''); }} className="row" style={{ width: '100%', flexWrap: 'nowrap', padding: '14px 16px', border: 0, borderBottom: '1px solid var(--line)', cursor: 'pointer', textAlign: 'left', background: newWith === m.id ? 'var(--ivory)' : '#fff' }} aria-current={newWith === m.id}>
+              <li key={m.id}><button onClick={() => { setNewWith(m.id); setDraft(''); setOpenOnPhone(true); }} className="row" style={{ width: '100%', flexWrap: 'nowrap', padding: '14px 16px', border: 0, borderBottom: '1px solid var(--line)', cursor: 'pointer', textAlign: 'left', background: newWith === m.id ? 'var(--ivory)' : '#fff' }} aria-current={newWith === m.id}>
                 <Avatar spec={m.portrait} size={38} />
                 <span style={{ minWidth: 0, flex: 1 }}>
                   <strong style={{ fontSize: 14, display: 'block' }}>{m.name}</strong>
@@ -147,6 +151,7 @@ export function MessagesPage() {
           {active && (
             <div style={{ display: 'flex', flexDirection: 'column', minHeight: 0 }}>
               <div className="row" style={{ padding: '12px 20px', borderBottom: '1px solid var(--line)', flexWrap: 'nowrap', ['--gap' as string]: '12px' }}>
+                <button type="button" className="btn btn-ghost btn-sm msg-back" onClick={() => setOpenOnPhone(false)} aria-label={lang === 'fr' ? 'Toutes les conversations' : 'All conversations'}>←</button>
                 {(() => {
                   const otherId = active.participantIds.find((p) => p !== userId)!;
                   const other = person(otherId);

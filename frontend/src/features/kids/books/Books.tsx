@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { useI18n } from '../../../i18n/I18nProvider';
 import { readAloud } from './readAloud';
 import { Scene } from './Scene';
+import { coverStage, stagedCasts, stageFor } from './staging';
 import type { Book } from './stories';
 
 /* ======================= A book on the shelf (3D object) ======================= */
@@ -15,7 +16,7 @@ export function BookObject({ book, recommended, read, onOpen }: { book: Book; re
       {recommended && <span className="bk3d-ribbon">{fr ? 'Pour toi' : 'For you'}</span>}
       <span className="bk3d" style={{ ['--cloth' as string]: book.cloth, ['--ink' as string]: book.ink }}>
         <span className="bk3d-face bk3d-front">
-          <Scene kind={book.cover.scene} time={book.cover.time} props={book.cover.props} cast={book.cover.cast} className="bk3d-art" />
+          <Scene kind={book.cover.scene} time={book.cover.time} props={book.cover.props} cast={book.cover.cast} stage={coverStage(book)} className="bk3d-art" />
           <span className="bk3d-titlebox">
             <span className="bk3d-title" lang="fr">{book.title}</span>
             <span className="bk3d-sub">{fr ? 'Une histoire bilingue' : 'A bilingual story'}</span>
@@ -218,7 +219,7 @@ function StoryPage({ book, p, live, word, showEn }: { book: Book; p: number; liv
         {showEn && <p className="bk-en">{page.en}</p>}
       </div>
       <div className="bk-story-art">
-        <Scene kind={page.scene} time={page.time} props={page.props} cast={page.cast} variant="page" live={live} />
+        <Scene kind={page.scene} time={page.time} props={page.props} cast={stagedCasts(book)[p]} stage={stageFor(book, p)} variant="page" live={live} />
       </div>
       <span className="bk-folio">{p + 1}</span>
     </div>
@@ -229,7 +230,7 @@ function StoryPage({ book, p, live, word, showEn }: { book: Book; p: number; liv
 function SpotPage({ book, live }: { book: Book; live: boolean }) {
   return (
     <div className="bk-spotpage">
-      <div className="bk-spot"><Scene kind={book.cover.scene} time={book.cover.time} props={book.cover.props} cast={book.cover.cast} variant="page" live={live} /></div>
+      <div className="bk-spot"><Scene kind={book.cover.scene} time={book.cover.time} props={book.cover.props} cast={book.cover.cast} stage={{ ...coverStage(book), framing: 'wide', mirror: true }} variant="page" live={live} /></div>
       <span className="bk-ornament" aria-hidden>❦</span>
     </div>
   );
@@ -259,7 +260,7 @@ function TitlePage({ book, live = false }: { book: Book; live?: boolean }) {
       <span className="bk-kicker">La Porte Kids · {book.level}</span>
       <h2 className="bk-h" lang="fr">{book.title}</h2>
       {!fr && <span className="bk-sub">{book.titleEn}</span>}
-      <div className="bk-vignette"><Scene kind={book.cover.scene} time={book.cover.time} props={book.cover.props} cast={book.cover.cast} variant="page" live={live} /></div>
+      <div className="bk-vignette"><Scene kind={book.cover.scene} time={book.cover.time} props={book.cover.props} cast={book.cover.cast} stage={coverStage(book)} variant="page" live={live} /></div>
       <p className="bk-blurb">{fr ? book.blurb.fr : book.blurb.en}</p>
       <span className="bk-age">{fr ? `Pour les ${book.ages} ans` : `For ages ${book.ages}`}</span>
     </div>
@@ -271,7 +272,7 @@ const EndArt = ({ book, live = false }: { book: Book; live?: boolean }) => {
   const p = book.pages[book.pages.length - 1];
   return (
     <div className="bk-spotpage">
-      <div className="bk-spot bk-spot-wide"><Scene kind={p.scene} time={p.time === 'day' ? 'dusk' : p.time} props={p.props} cast={p.cast} variant="page" live={live} /></div>
+      <div className="bk-spot bk-spot-wide"><Scene kind={p.scene} time={p.time === 'day' ? 'dusk' : p.time} props={p.props} cast={stagedCasts(book)[book.pages.length - 1]} stage={{ ...stageFor(book, book.pages.length - 1), framing: 'wide' }} variant="page" live={live} /></div>
       <span className="bk-ornament" aria-hidden>❦</span>
     </div>
   );
