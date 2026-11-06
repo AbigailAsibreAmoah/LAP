@@ -256,3 +256,6 @@
 @media (max-width: 640px) { .bk-drop-hint { top: auto; bottom: 10px; font-size: 13px; } }
 /* "In my library" heart: bottom corner, clear of the title */
 .bk3d-kept { top: auto; bottom: 34px; left: 10px; }
+.bk-drop-hint { top: 18px; right: 18px; left: auto; transform: none; }
+.bk-shelves[data-dragging] .bk-shelf-head .small { visibility: hidden; }
+@media (max-width: 640px) { .bk-drop-hint { top: 52px; right: auto; left: 14px; bottom: auto; } }
