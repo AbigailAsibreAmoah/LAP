@@ -9,6 +9,7 @@ import './styles/practice.css';
 import './styles/cafe.css';
 import './styles/books.css';
 import './styles/passport-map.css';
+import './styles/note.css';
 import './styles/mobile.css';
 
 listenForStaleBuilds();

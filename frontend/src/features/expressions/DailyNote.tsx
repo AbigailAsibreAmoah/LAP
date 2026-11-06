@@ -113,7 +113,7 @@ export function NoteContent({ expr, slot: liveSlot, hour, inWindow }: { expr: Da
   return (
     <div className={`dn${inWindow ? ' dn-window' : ''}`}>
       <div className="dn-head">
-        <span className="dn-kicker" lang="fr">Expression du jour · {meta.title[fr ? 'fr' : 'en']}</span>
+        <span className="dn-kicker" lang="fr">Expression du jour{slot !== 'meaning' && <> · {meta.title[fr ? 'fr' : 'en']}</>}</span>
         <button type="button" className="dn-icon" onClick={() => listen(speakText)} aria-label={fr ? 'Écouter' : 'Listen'}><Icon name="headphones" size={15} /></button>
       </div>
       <div className="dn-body">{body}</div>
