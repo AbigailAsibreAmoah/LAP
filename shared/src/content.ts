@@ -399,7 +399,8 @@ export function courseOutline(state: ContentState, courseId: string) {
     title: m.title,
     lessons: state.lessons
       .filter((l) => l.courseId === courseId && l.moduleIndex === i && l.status !== 'archived')
-      .sort((a, b) => a.position - b.position)
+      // the end-of-level assessment always closes the course
+      .sort((a, b) => Number(a.kind === 'assessment') - Number(b.kind === 'assessment') || a.position - b.position)
       .map((l): OutlineEntry => {
         const first = l.blocks[0];
         const v = first?.type === 'video' ? state.media.find((x) => x.id === first.assetId) : undefined;
@@ -774,16 +775,69 @@ const RICH: Record<string, { objective: Localized; level: CefrLevel; blocks: (vi
   },
 };
 
+/** End-of-level assessments: the last lesson of each level's last course. Passing it shows the
+ *  learner (and their tutor) that the level is complete and the next one can be bought. */
+const ASSESS: Record<CefrLevel, { minutes: number; questions: QuizQuestion[]; task: Localized; minWords: number }> = {
+  A1: { minutes: 45, minWords: 30, task: L('Introduce yourself in 4–5 sentences: name, city, job and one thing you like.', 'Présentez-vous en 4 ou 5 phrases : nom, ville, métier et une chose que vous aimez.'), questions: [
+    q('fa1-1', '« Bonjour, je ___ Ama. »', ['suis', 'm’appelle', 'ai'], 1, '“Je m’appelle” gives your name.', '« Je m’appelle » sert à donner son nom.'),
+    q('fa1-2', 'Pour demander le prix :', ['C’est combien ?', 'C’est où ?', 'C’est quand ?'], 0, '“Combien” asks about quantity or price.', '« Combien » porte sur la quantité ou le prix.'),
+    q('fa1-3', '« J’aime ___ café. »', ['le', 'un', 'des'], 0, 'After “aimer”, use the definite article.', 'Après « aimer », on emploie l’article défini.'),
+  ] },
+  A2: { minutes: 45, minWords: 60, task: L('Write a short email to a colleague: say what you did last week and propose a meeting time.', 'Écrivez un court courriel à un collègue : racontez votre semaine passée et proposez un horaire de réunion.'), questions: [
+    q('fa2-1', '« Hier, nous ___ le client. »', ['rencontrons', 'avons rencontré', 'rencontrerons'], 1, '“Hier” needs the passé composé.', '« Hier » appelle le passé composé.'),
+    q('fa2-2', 'Pour exprimer un désaccord poliment :', ['C’est faux.', 'Je ne suis pas tout à fait d’accord.', 'Non.'], 1, 'Soften disagreement at work.', 'Au travail, on nuance son désaccord.'),
+    q('fa2-3', '« Pourriez-vous m’envoyer ___ devis ? »', ['un', 'le', 'du'], 0, 'A quote you have not seen yet: “un devis”.', 'Un devis encore inconnu : « un devis ».'),
+  ] },
+  B1: { minutes: 50, minWords: 120, task: L('Explain a problem at work, its cause and two possible solutions. Recommend one and justify it.', 'Expliquez un problème au travail, sa cause et deux solutions possibles. Recommandez-en une et justifiez-la.'), questions: [
+    q('fb1-1', '« Je pense ___ c’est une bonne idée. »', ['que', 'qui', 'dont'], 0, '“Penser que” introduces an opinion.', '« Penser que » introduit une opinion.'),
+    q('fb1-2', '« Le projet a pris du retard ___ la grève. »', ['grâce à', 'à cause de', 'pour'], 1, 'A negative cause: “à cause de”.', 'Cause négative : « à cause de ».'),
+    q('fb1-3', '« Si j’avais le budget, je ___ une personne. »', ['recrute', 'recruterai', 'recruterais'], 2, 'Si + imparfait → conditionnel.', 'Si + imparfait → conditionnel.'),
+  ] },
+  B2: { minutes: 50, minWords: 200, task: L('Write an argued note for your manager: should your team move to a four-day week? Weigh both sides.', 'Rédigez une note argumentée pour votre responsable : votre équipe doit-elle passer à la semaine de quatre jours ? Pesez le pour et le contre.'), questions: [
+    q('fb2-1', '« Il faut que vous ___ le rapport avant lundi. »', ['finissez', 'finissiez', 'finirez'], 1, '“Il faut que” takes the subjunctive.', '« Il faut que » est suivi du subjonctif.'),
+    q('fb2-2', '« ___ ses efforts, le projet a échoué. »', ['Malgré', 'Grâce à', 'Puisque'], 0, 'Concession: “malgré”.', 'Concession : « malgré ».'),
+    q('fb2-3', 'Registre adapté pour une note officielle :', ['On a vu que ça marche pas.', 'Il apparaît que le dispositif ne fonctionne pas.', 'Bon, ça marche pas.'], 1, 'Formal, impersonal register.', 'Registre soutenu et impersonnel.'),
+  ] },
+  C1: { minutes: 60, minWords: 280, task: L('Synthesise two opposing viewpoints on remote work into a balanced 280-word article, then state your own position.', 'Faites la synthèse de deux points de vue opposés sur le télétravail en un article équilibré de 280 mots, puis donnez votre position.'), questions: [
+    q('fc1-1', '« ___ qu’il soit compétent, il manque d’expérience. »', ['Bien', 'Parce', 'Dès'], 0, '“Bien que” + subjunctive expresses concession.', '« Bien que » + subjonctif exprime la concession.'),
+    q('fc1-2', 'Reformulation la plus nuancée de « C’est une mauvaise idée » :', ['C’est nul.', 'Cette option me paraît discutable.', 'Je déteste.'], 1, 'Nuance through modalisation.', 'La nuance passe par la modalisation.'),
+    q('fc1-3', '« Les mesures ___ le gouvernement a annoncées… »', ['que', 'dont', 'qui'], 0, 'Direct object of “annoncer”: “que”.', 'Complément direct d’« annoncer » : « que ».'),
+  ] },
+  C2: { minutes: 60, minWords: 350, task: L('From a short dossier, write an editorial that persuades a sceptical reader, with a clear structure and precise register.', 'À partir d’un court dossier, rédigez un éditorial qui convainc un lecteur sceptique, avec une structure claire et un registre précis.'), questions: [
+    q('fc2-1', '« Il eût fallu qu’il ___ plus tôt. »', ['parte', 'partît', 'partirait'], 1, 'Literary register: imperfect subjunctive.', 'Registre littéraire : subjonctif imparfait.'),
+    q('fc2-2', 'Sens de « ne pas y aller par quatre chemins » :', ['Se perdre', 'Parler franchement', 'Hésiter longtemps'], 1, 'To speak bluntly, without detours.', 'Parler sans détour.'),
+    q('fc2-3', '« Quelque ___ que soient vos raisons… »', ['bonnes', 'bon', 'bonne'], 0, '“Quelque” + adjective agrees with the noun here.', '« Quelque » + adjectif : l’adjectif s’accorde.'),
+  ] },
+};
+
+function assessmentLesson(level: CefrLevel): { objective: Localized; level: CefrLevel; blocks: (videoId: string) => Block[] } {
+  const a = ASSESS[level];
+  const id = `final-${level.toLowerCase()}`;
+  return {
+    level,
+    objective: L(`Show that you have reached ${level}: complete the quiz and the written task. Your tutor reviews the task.`, `Montrez que vous avez atteint le niveau ${level} : faites le quiz et la tâche écrite. Votre tuteur corrige la tâche.`),
+    blocks: (videoId) => [
+      { id: `${id}-video`, type: 'video', assetId: videoId },
+      { id: `${id}-notes`, type: 'notes', heading: `Évaluation de fin de niveau ${level}`, body: L(`This assessment closes level ${level}. Take about ${a.minutes} minutes, without notes. When you pass, your tutor confirms the level and the next one can open.`, `Cette évaluation clôt le niveau ${level}. Prévoyez environ ${a.minutes} minutes, sans notes. Une fois réussie, votre tuteur confirme le niveau et le suivant peut s’ouvrir.`) },
+      { id: `${id}-quiz`, type: 'quiz', questions: a.questions },
+      { id: `${id}-task`, type: 'assignment', prompt: a.task, minWords: a.minWords },
+    ],
+  };
+}
+const ASSESSMENT_LESSONS: Record<string, ReturnType<typeof assessmentLesson>> = Object.fromEntries(
+  (Object.keys(ASSESS) as CefrLevel[]).map((lv) => [`les-final-${lv.toLowerCase()}`, assessmentLesson(lv)]),
+);
+
 function seedLessons(): { lessons: LessonDoc[]; media: MediaAsset[] } {
   const lessons: LessonDoc[] = [];
   const media: MediaAsset[] = [...SEED_AUDIO];
   for (const course of COURSES) {
-    const baseLevel = course.levels.slice(0, 2) as CefrLevel;
+    const baseLevel = course.levels;
     course.modules.forEach((m, mi) =>
       m.lessons.forEach((ref, pi) => {
         const videoId = `vid-${ref.id}`;
         media.push({ id: videoId, kind: 'video', title: `Introduction : ${ref.title}`, durationSec: ref.videoSec ?? 300, speaker: TUTORS.find((t) => t.id === course.tutorId)?.name, url: null, uploadedBy: course.tutorId, uploadedAt: SEED_AT });
-        const rich = RICH[ref.id];
+        const rich = RICH[ref.id] ?? ASSESSMENT_LESSONS[ref.id];
         const status: ContentStatus = rich ? 'published' : ref.id === 'les-b6' ? 'in-review' : 'draft';
         const blocks: Block[] = rich
           ? rich.blocks(videoId)
@@ -800,7 +854,7 @@ function seedLessons(): { lessons: LessonDoc[]; media: MediaAsset[] } {
           moduleIndex: mi,
           position: pi,
           title: ref.title,
-          level: rich?.level ?? baseLevel,
+          level: baseLevel, // a lesson always has its course's single level
           kind: ref.kind,
           minutes: ref.minutes,
           objective: rich?.objective ?? (ref.id === 'les-b6' ? L('Write a short, structured meeting report.', 'Rédiger un compte rendu de réunion court et structuré.') : L('', '')),

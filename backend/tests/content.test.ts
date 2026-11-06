@@ -197,7 +197,8 @@ describe('placement and rewards', () => {
     const res = await takePlacement(app, right);
     expect(res.status).toBe(201);
     expect(res.body.result.level).toBe('C2');
-    expect(res.body.result.plan.courseIds).toContain('crs-business');
+    // Courses belong to one level: the plan only recommends courses at the placement level.
+    expect(res.body.result.plan.courseIds).toEqual(['crs-mastery', 'crs-exams-c2']);
     expect(res.body.learner.level).toBe('C2');
   });
 

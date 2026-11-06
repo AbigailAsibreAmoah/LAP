@@ -33,7 +33,6 @@ const NAV: Record<Role, NavGroup[]> = {
       { to: '/app/studio', key: 'app.studio', icon: 'mic', mobile: true },
       { to: '/app/practice', key: 'app.practice', icon: 'edit' },
       { to: '/app/group', key: 'app.group', icon: 'users' },
-      { to: '/app/tutors', key: 'app.ourTutors', icon: 'user' },
       { to: '/app/book', key: 'app.book', icon: 'calendar', mobile: true },
       { to: '/app/lessons', key: 'app.lessons', icon: 'clock' },
     ] },
@@ -318,12 +317,16 @@ function SearchBox() {
       out.push({ id: c.id, to: `/app/courses/${c.id}`, icon: 'book', label: l(c.title), sub: `${fr ? 'Cours' : 'Course'} · ${c.levels}` });
       for (const m of c.modules) for (const x of m.lessons) out.push({ id: x.id, to: `/app/learn/${x.id}?course=${c.id}`, icon: 'play', label: x.title, sub: `${fr ? 'Leçon' : 'Lesson'} · ${l(c.title)}` });
     }
-    for (const tu of TUTORS) out.push({ id: tu.id, to: '/app/book', icon: 'user', label: tu.name, sub: `${fr ? 'Tuteur' : 'Tutor'} · ${tu.specialities.slice(0, 2).join(', ')}` });
+    for (const tu of TUTORS) out.push({ id: tu.id, to: `/app/tutors/${tu.id}`, icon: 'user', label: tu.name, sub: `${fr ? 'Tuteur' : 'Tutor'} · ${tu.specialities.slice(0, 2).join(', ')}` });
     return out;
   }, [l, fr]);
 
   const term = norm(q.trim());
-  const hits = term ? index.filter((h) => norm(`${h.label} ${h.sub}`).includes(term)).slice(0, 6) : [];
+  // Typing the word "tutor" (tuteur, tutrice…) lists every La Porte tutor, then a link to the full list.
+  const wantsTutors = /^(tut|tute|tuto|tutor|tutors|tuteur|tuteurs|tutrice|tutrices)$/.test(term);
+  const hits = !term ? [] : wantsTutors
+    ? [...index.filter((h) => h.icon === 'user'), { id: 'all-tutors', to: '/app/tutors', icon: 'users' as const, label: fr ? 'Voir tous les tuteurs' : 'See all tutors', sub: fr ? 'Parcours, spécialités et cours' : 'Background, expertise and courses' }]
+    : index.filter((h) => norm(`${h.label} ${h.sub}`).includes(term)).slice(0, 6);
   const go = (h: Hit) => {
     navigate(h.to);
     setQ('');

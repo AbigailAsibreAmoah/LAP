@@ -1,4 +1,4 @@
-import { DEMO_TODAY, SEED_ANCHOR, daysBetween, seedContent, shiftDatesInPlace, type ContentState } from '@laporte/shared';
+import { COURSES, DEMO_TODAY, SEED_ANCHOR, daysBetween, seedContent, shiftDatesInPlace, type ContentState } from '@laporte/shared';
 import { mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { env } from '../config/env';
@@ -17,7 +17,19 @@ function load(): ContentState {
     // Saved data follows the calendar too: move it forward by the days since it was last saved.
     shiftDatesInPlace(saved, daysBetween(seededFor ?? SEED_ANCHOR, DEMO_TODAY));
     // Fill collections added after the file was written.
-    return { ...seedContent(), ...saved };
+    const seed = seedContent();
+    const merged: ContentState = { ...seed, ...saved };
+    // Lessons and media added to the catalogue later (e.g. new courses, end-of-level assessments).
+    const have = new Set(merged.lessons.map((l) => l.id));
+    merged.lessons = [...merged.lessons, ...seed.lessons.filter((l) => !have.has(l.id))];
+    const haveMedia = new Set(merged.media.map((m) => m.id));
+    merged.media = [...merged.media, ...seed.media.filter((m) => !haveMedia.has(m.id))];
+    // A course belongs to one level only, so every lesson takes its course's level.
+    merged.lessons = merged.lessons.map((l) => {
+      const level = COURSES.find((c) => c.id === l.courseId)?.levels;
+      return level && l.level !== level ? { ...l, level } : l;
+    });
+    return merged;
   } catch {
     return seedContent();
   }

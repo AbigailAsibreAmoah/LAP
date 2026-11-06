@@ -15,7 +15,7 @@ import { useStore } from '../../state/AppStore';
 import { formatDate } from '../../utils/format';
 import { JourneyMap } from './JourneyMap';
 
-const KIND_ICON: Record<string, IconName> = { video: 'video', reading: 'book', quiz: 'quiz', speaking: 'mic', assignment: 'edit', live: 'meet' };
+const KIND_ICON: Record<string, IconName> = { video: 'video', reading: 'book', quiz: 'quiz', speaking: 'mic', assignment: 'edit', live: 'meet', assessment: 'award' };
 
 export function PerformancePassport({ readOnly }: { readOnly?: boolean }) {
   const { t, l, lang } = useI18n();

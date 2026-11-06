@@ -167,7 +167,11 @@ export function CourseDetailPage({ inApp }: { inApp?: boolean }) {
   const outline = courseOutline(library, course.id).map((m, i) => {
     const known = new Set(m.lessons.map((x) => x.id));
     const pending = course.modules[i].lessons.filter((x) => !known.has(x.id)).map((x) => ({ ...x, level: courseRange(course)[0], status: 'draft' as const, available: false }));
-    return { title: m.title, lessons: [...m.lessons, ...pending] };
+    // Keep the catalogue's order, so the end-of-level assessment stays the last lesson.
+    const order = course.modules[i].lessons.map((x) => x.id);
+    const at = (id: string) => { const n = order.indexOf(id); return n < 0 ? order.length : n; };
+    const lessons = [...m.lessons, ...pending].sort((a, b) => Number(a.kind === 'assessment') - Number(b.kind === 'assessment') || at(a.id) - at(b.id));
+    return { title: m.title, lessons };
   });
   const published = outline.flatMap((m) => m.lessons).filter((x) => x.available);
   const done = new Set(library.completions.filter((x) => x.learnerId === learner.id).map((x) => x.lessonId));
@@ -207,7 +211,7 @@ export function CourseDetailPage({ inApp }: { inApp?: boolean }) {
                   <motion.ul initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.35, ease: ease.out }} style={{ listStyle: 'none', margin: 0, padding: '0 0 12px', overflow: 'hidden' }}>
                     {m.lessons.map((les) => (
                       <li key={les.id} className="list-row" data-pending={!les.available || undefined}>
-                        <span style={{ color: 'var(--gold-600)' }}><Icon name={les.kind === 'live' ? 'meet' : les.kind === 'speaking' ? 'mic' : les.kind === 'quiz' ? 'quiz' : les.kind === 'assignment' ? 'edit' : les.kind === 'reading' ? 'book' : 'video'} size={18} /></span>
+                        <span style={{ color: 'var(--gold-600)' }}><Icon name={les.kind === 'assessment' ? 'award' : les.kind === 'live' ? 'meet' : les.kind === 'speaking' ? 'mic' : les.kind === 'quiz' ? 'quiz' : les.kind === 'assignment' ? 'edit' : les.kind === 'reading' ? 'book' : 'video'} size={18} /></span>
                         <span lang="fr" style={{ flex: 1 }}>{les.title}</span>
                         {!les.available ? (
                           <span className="chip" style={{ minHeight: 22 }}>{lang === 'fr' ? 'Bientôt' : 'Coming soon'}</span>

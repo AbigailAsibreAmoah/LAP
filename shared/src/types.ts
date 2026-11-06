@@ -37,7 +37,8 @@ export interface CourseArea {
   blurb: Localized;
 }
 
-export type LessonKind = 'video' | 'reading' | 'quiz' | 'speaking' | 'assignment' | 'live';
+/** 'assessment' is the end-of-level assessment: the last lesson of each level's last course. */
+export type LessonKind = 'video' | 'reading' | 'quiz' | 'speaking' | 'assignment' | 'live' | 'assessment';
 
 export interface LessonRef {
   id: string;
@@ -59,7 +60,8 @@ export interface Course {
   area: CourseAreaId;
   title: Localized;
   summary: Localized;
-  levels: string;
+  /** The ONE CEFR level this course belongs to: courses never span levels. */
+  levels: CefrLevel;
   format: Localized;
   durationWeeks: number;
   outcomes: Localized[];

@@ -1,7 +1,8 @@
 // Business rules shared by the API and the offline demo adapter, so both apply them identically.
 // Pure functions only: no I/O, no clocks (callers pass "now").
 import { nowIso } from './clock';
-import type { Booking, CefrLevel, Localized } from './types';
+import { COURSES, PATHWAYS } from './demo-data';
+import type { Booking, CefrLevel, CourseAreaId, Localized } from './types';
 
 /** @deprecated use nowIso(); kept for compatibility. */
 export { nowIso };
@@ -101,17 +102,28 @@ export const LEARNING_GOALS = {
 } satisfies Record<string, Localized>;
 export type LearningGoalId = keyof typeof LEARNING_GOALS;
 
-/** Which course best serves each goal (ids from COURSES). */
-const GOAL_COURSE: Record<LearningGoalId, string> = {
-  meetings: 'crs-business',
-  negotiations: 'crs-trade',
-  presentations: 'crs-business',
-  interviews: 'crs-career',
-  diplomacy: 'crs-diplomacy',
-  travel: 'crs-everyday',
-  everyday: 'crs-conversation',
-  exams: 'crs-exams',
+/** Which kind of course best serves each goal. Courses belong to one level, so the plan picks
+ *  the course of that kind AT the learner's level (and fills up with that level's own courses). */
+const GOAL_AREA: Record<LearningGoalId, CourseAreaId[]> = {
+  meetings: ['business'],
+  negotiations: ['entrepreneurship', 'business'],
+  presentations: ['business'],
+  interviews: ['academic'],
+  diplomacy: ['diplomacy', 'policy'],
+  travel: ['everyday'],
+  everyday: ['conversational', 'everyday'],
+  exams: ['exams'],
 };
+
+/** Up to three courses for these goals, all at the given level. */
+export function coursesForGoals(goals: LearningGoalId[], level: CefrLevel): string[] {
+  const atLevel = PATHWAYS.find((p) => p.level === level)?.courseIds ?? [];
+  const byGoal = goals.flatMap((g) => {
+    const match = GOAL_AREA[g].map((area) => COURSES.find((c) => c.levels === level && c.area === area)).find(Boolean);
+    return match ? [match.id] : [];
+  });
+  return [...new Set([...byGoal, ...atLevel])].slice(0, 3);
+}
 
 export interface PlacementInput {
   answers: Record<string, number>;
@@ -156,7 +168,7 @@ export function scorePlacement(answers: Record<string, number>, bank: PlacementQ
 export function buildPlacementResult(input: PlacementInput, ctx: { id: string; learnerId: string; takenAt: string }, bank: PlacementQuestion[]): PlacementResult {
   const { level, scores } = scorePlacement(input.answers, bank);
   const goals = input.goals.length ? input.goals : (['everyday'] as LearningGoalId[]);
-  const courseIds = [...new Set(goals.map((g) => GOAL_COURSE[g]))].slice(0, 3);
+  const courseIds = coursesForGoals(goals, level);
   // Two-thirds of the learner's time goes to self-paced work; one 45–60 min live session per ~2.5 h.
   const minutes = Math.round(input.hoursPerWeek * 60);
   const weeklyLiveSessions = Math.max(1, Math.min(4, Math.round(input.hoursPerWeek / 2.5)));

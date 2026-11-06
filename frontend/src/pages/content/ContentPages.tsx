@@ -37,7 +37,7 @@ import { formatClip, formatDate } from '../../utils/format';
 import { PageHead } from '../learner/LearnerPages';
 
 const LEVELS: CefrLevel[] = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'];
-const KINDS: LessonKind[] = ['video', 'reading', 'speaking', 'quiz', 'assignment', 'live'];
+const KINDS: LessonKind[] = ['video', 'reading', 'speaking', 'quiz', 'assignment', 'live', 'assessment'];
 const STATUS_LABEL: Record<ContentStatus, Localized> = {
   draft: { en: 'Draft', fr: 'Brouillon' },
   'in-review': { en: 'In review', fr: 'En relecture' },

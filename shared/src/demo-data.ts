@@ -115,16 +115,71 @@ export const TUTORS: Tutor[] = [
 
 const L = (en: string, fr: string) => ({ en, fr });
 
+/**
+ * The catalogue. Every course belongs to exactly ONE CEFR level: no course spans levels.
+ * Each level is a short sequence of courses (PATHWAYS), and the last lesson of a level's last
+ * course is that level's end-of-level assessment (kind 'assessment').
+ */
 export const COURSES: Course[] = [
+  /* ---------------- A1 ---------------- */
+  {
+    id: 'crs-everyday',
+    area: 'everyday',
+    title: L('Everyday French Essentials', 'L’essentiel du français au quotidien'),
+    summary: L('Travel, shopping, directions and getting things done — the foundations, beautifully explained.', 'Voyager, faire ses courses, s’orienter : les bases, clairement expliquées.'),
+    levels: 'A1',
+    format: L('Fully self-paced', 'Entièrement en autonomie'),
+    durationWeeks: 5,
+    outcomes: [L('Handle common travel situations', 'Gérer les situations de voyage courantes'), L('Understand everyday announcements', 'Comprendre les annonces du quotidien')],
+    tutorId: 'tut-aicha',
+    accent: 'green',
+    premium: false,
+    modules: [
+      { title: L('Getting around', 'Se déplacer'), lessons: [
+        { id: 'les-e1', title: 'Demander son chemin', minutes: 15, kind: 'video', videoSec: 305 },
+        { id: 'les-e2', title: 'À la gare', minutes: 15, kind: 'quiz', videoSec: 315 },
+      ] },
+      { title: L('Shopping & numbers', 'Les courses et les nombres'), lessons: [
+        { id: 'les-e3', title: 'Au marché : les prix', minutes: 15, kind: 'video', videoSec: 290 },
+        { id: 'les-e4', title: 'Commander au restaurant', minutes: 20, kind: 'speaking', videoSec: 300 },
+      ] },
+    ],
+  },
+  {
+    id: 'crs-conversation',
+    area: 'conversational',
+    title: L('First Conversations', 'Premières conversations'),
+    summary: L('Greetings, simple questions and your first opinions — French that sounds natural, not memorised.', 'Salutations, questions simples et premières opinions — un français naturel, pas récité.'),
+    levels: 'A1',
+    format: L('Guided practice + conversation clubs', 'Pratique guidée + clubs de conversation'),
+    durationWeeks: 5,
+    outcomes: [L('Introduce yourself and others', 'Se présenter et présenter quelqu’un'), L('Ask and answer simple questions', 'Poser des questions simples et y répondre'), L('Say what you like and why', 'Dire ce qu’on aime et pourquoi')],
+    tutorId: 'tut-sophie',
+    accent: 'navy',
+    premium: false,
+    modules: [
+      { title: L('Breaking the ice', 'Briser la glace'), lessons: [
+        { id: 'les-c1', title: 'Les salutations et les présentations', minutes: 15, kind: 'video', videoSec: 305 },
+        { id: 'les-c2', title: 'Poser des questions simples', minutes: 20, kind: 'speaking', videoSec: 315 },
+      ] },
+      { title: L('Likes & opinions', 'Goûts et opinions'), lessons: [
+        { id: 'les-c3', title: 'À mon avis…', minutes: 20, kind: 'video', videoSec: 285 },
+        { id: 'les-c4', title: 'Quiz : exprimer une opinion', minutes: 10, kind: 'quiz', videoSec: 300 },
+        { id: 'les-final-a1', title: 'Évaluation de fin de niveau A1', minutes: 45, kind: 'assessment', videoSec: 300 },
+      ] },
+    ],
+  },
+
+  /* ---------------- A2 ---------------- */
   {
     id: 'crs-business',
     area: 'business',
-    title: L('Business French for Professionals', 'Le français des affaires'),
-    summary: L('Lead meetings, present ideas and build working relationships with French-speaking colleagues.', 'Animer des réunions, présenter des idées et collaborer avec des collègues francophones.'),
-    levels: 'A2–C1',
+    title: L('Business French: First Steps at Work', 'Français des affaires : premiers pas au travail'),
+    summary: L('Introduce yourself professionally, take part in meetings and present a simple idea to colleagues.', 'Se présenter professionnellement, participer aux réunions et présenter une idée simple.'),
+    levels: 'A2',
     format: L('Self-paced lessons + weekly live practice', 'Leçons en autonomie + pratique en direct hebdomadaire'),
-    durationWeeks: 12,
-    outcomes: [L('Introduce yourself and your organisation', 'Présenter votre parcours et votre organisation'), L('Take part in a professional meeting', 'Participer à une réunion professionnelle'), L('Write clear, polite emails', 'Rédiger des courriels clairs et courtois')],
+    durationWeeks: 6,
+    outcomes: [L('Introduce yourself and your organisation', 'Présenter votre parcours et votre organisation'), L('Take part in a professional meeting', 'Participer à une réunion professionnelle'), L('Present a simple project', 'Présenter un projet simple')],
     tutorId: 'tut-sophie',
     accent: 'burgundy',
     premium: true,
@@ -146,75 +201,14 @@ export const COURSES: Course[] = [
     ],
   },
   {
-    id: 'crs-conversation',
-    area: 'conversational',
-    title: L('Confident Conversation', 'Converser avec aisance'),
-    summary: L('Small talk, opinions and storytelling — French that sounds natural, not memorised.', 'Échanges informels, opinions et récits — un français naturel, pas récité.'),
-    levels: 'A1–B1',
-    format: L('Guided practice + conversation clubs', 'Pratique guidée + clubs de conversation'),
-    durationWeeks: 10,
-    outcomes: [L('Hold an everyday conversation', 'Tenir une conversation courante'), L('Share opinions politely', 'Donner son avis poliment'), L('Tell a short personal story', 'Raconter une courte anecdote')],
-    tutorId: 'tut-sophie',
-    accent: 'navy',
-    premium: false,
-    modules: [
-      { title: L('Breaking the ice', 'Briser la glace'), lessons: [
-        { id: 'les-c1', title: 'Les salutations et les présentations', minutes: 15, kind: 'video', videoSec: 305 },
-        { id: 'les-c2', title: 'Poser des questions simples', minutes: 20, kind: 'speaking', videoSec: 315 },
-      ] },
-      { title: L('Opinions', 'Les opinions'), lessons: [
-        { id: 'les-c3', title: 'À mon avis…', minutes: 20, kind: 'video', videoSec: 285 },
-        { id: 'les-c4', title: 'Quiz : exprimer une opinion', minutes: 10, kind: 'quiz', videoSec: 300 },
-      ] },
-    ],
-  },
-  {
-    id: 'crs-diplomacy',
-    area: 'diplomacy',
-    title: L('French for Diplomacy', 'Le français de la diplomatie'),
-    summary: L('Protocol, formal registers and multilateral meeting language for international careers.', 'Protocole, registre soutenu et langage des réunions multilatérales.'),
-    levels: 'B1–C1',
-    format: L('Cohort programme with live seminars', 'Programme en cohorte avec séminaires en direct'),
-    durationWeeks: 14,
-    outcomes: [L('Use formal registers appropriately', 'Employer le registre soutenu à bon escient'), L('Summarise a position in a briefing', 'Résumer une position dans une note'), L('Follow and contribute to a plenary session', 'Suivre une séance plénière et y intervenir')],
-    tutorId: 'tut-jeanmarc',
-    accent: 'navy',
-    premium: true,
-    modules: [
-      { title: L('Protocol & register', 'Protocole et registre'), lessons: [
-        { id: 'les-d1', title: 'Les formules de politesse officielles', minutes: 25, kind: 'reading', videoSec: 320 },
-        { id: 'les-d2', title: 'Intervenir en séance', minutes: 30, kind: 'speaking', videoSec: 275 },
-      ] },
-    ],
-  },
-  {
-    id: 'crs-policy',
-    area: 'policy',
-    title: L('Public Policy & Development French', 'Français des politiques publiques'),
-    summary: L('Programme design, stakeholder meetings and reporting language for development practitioners.', 'Conception de programmes, réunions avec les partenaires et rédaction de rapports.'),
-    levels: 'B1–C1',
-    format: L('Self-paced + monthly case clinics', 'Autonomie + ateliers mensuels d’études de cas'),
-    durationWeeks: 10,
-    outcomes: [L('Describe a programme and its impact', 'Décrire un programme et son impact'), L('Lead a stakeholder consultation', 'Animer une consultation des parties prenantes')],
-    tutorId: 'tut-jeanmarc',
-    accent: 'green',
-    premium: true,
-    modules: [
-      { title: L('Programme language', 'Le langage des programmes'), lessons: [
-        { id: 'les-p1', title: 'Objectifs, résultats et indicateurs', minutes: 25, kind: 'video', videoSec: 310 },
-        { id: 'les-p2', title: 'Rédiger une note de synthèse', minutes: 40, kind: 'assignment', videoSec: 295 },
-      ] },
-    ],
-  },
-  {
     id: 'crs-trade',
     area: 'entrepreneurship',
-    title: L('Entrepreneurship & Trade', 'Entreprendre en français'),
-    summary: L('Pitch your business, negotiate terms and follow up with partners across Francophone Africa.', 'Présenter votre entreprise, négocier et assurer le suivi avec vos partenaires.'),
-    levels: 'A2–B2',
+    title: L('Entrepreneurship & Trade: First Deals', 'Entreprendre en français : premières affaires'),
+    summary: L('Present your business, ask for a quote and agree simple terms with partners across Francophone Africa.', 'Présenter votre entreprise, demander un devis et convenir de conditions simples avec vos partenaires.'),
+    levels: 'A2',
     format: L('Self-paced + pitch practice sessions', 'Autonomie + séances d’entraînement au pitch'),
-    durationWeeks: 8,
-    outcomes: [L('Pitch a product in two minutes', 'Présenter un produit en deux minutes'), L('Negotiate simple terms', 'Négocier des conditions simples')],
+    durationWeeks: 6,
+    outcomes: [L('Present a product in two minutes', 'Présenter un produit en deux minutes'), L('Ask for and compare quotes', 'Demander et comparer des devis')],
     tutorId: 'tut-thomas',
     accent: 'gold',
     premium: true,
@@ -222,36 +216,20 @@ export const COURSES: Course[] = [
       { title: L('The pitch', 'Le pitch'), lessons: [
         { id: 'les-t1', title: 'Présenter son entreprise', minutes: 20, kind: 'video', videoSec: 330 },
         { id: 'les-t2', title: 'Négocier un accord', minutes: 30, kind: 'speaking', videoSec: 290 },
+        { id: 'les-final-a2', title: 'Évaluation de fin de niveau A2', minutes: 45, kind: 'assessment', videoSec: 300 },
       ] },
     ],
   },
-  {
-    id: 'crs-everyday',
-    area: 'everyday',
-    title: L('Everyday French Essentials', 'L’essentiel du français au quotidien'),
-    summary: L('Travel, shopping, directions and getting things done — the foundations, beautifully explained.', 'Voyager, faire ses courses, s’orienter : les bases, clairement expliquées.'),
-    levels: 'A1–A2',
-    format: L('Fully self-paced', 'Entièrement en autonomie'),
-    durationWeeks: 8,
-    outcomes: [L('Handle common travel situations', 'Gérer les situations de voyage courantes'), L('Understand everyday announcements', 'Comprendre les annonces du quotidien')],
-    tutorId: 'tut-aicha',
-    accent: 'green',
-    premium: false,
-    modules: [
-      { title: L('Getting around', 'Se déplacer'), lessons: [
-        { id: 'les-e1', title: 'Demander son chemin', minutes: 15, kind: 'video', videoSec: 305 },
-        { id: 'les-e2', title: 'À la gare', minutes: 15, kind: 'quiz', videoSec: 315 },
-      ] },
-    ],
-  },
+
+  /* ---------------- B1 ---------------- */
   {
     id: 'crs-career',
     area: 'academic',
     title: L('Academic & Career French', 'Le français pour les études et la carrière'),
     summary: L('Applications, interviews and study-abroad preparation in confident, well-structured French.', 'Candidatures, entretiens et préparation aux études à l’étranger.'),
-    levels: 'A2–C1',
+    levels: 'B1',
     format: L('Self-paced + mock interviews', 'Autonomie + simulations d’entretien'),
-    durationWeeks: 8,
+    durationWeeks: 5,
     outcomes: [L('Write a motivation letter', 'Rédiger une lettre de motivation'), L('Answer interview questions with confidence', 'Répondre avec assurance en entretien')],
     tutorId: 'tut-aicha',
     accent: 'burgundy',
@@ -264,13 +242,92 @@ export const COURSES: Course[] = [
     ],
   },
   {
+    id: 'crs-business-b1',
+    area: 'business',
+    title: L('Business French: Meetings & Negotiation', 'Français des affaires : réunions et négociation'),
+    summary: L('Run a short meeting, explain a problem and negotiate a simple agreement.', 'Animer une courte réunion, expliquer un problème et négocier un accord simple.'),
+    levels: 'B1',
+    format: L('Self-paced lessons + weekly live practice', 'Leçons en autonomie + pratique en direct hebdomadaire'),
+    durationWeeks: 5,
+    outcomes: [L('Lead a short meeting', 'Animer une courte réunion'), L('Negotiate deadlines and prices', 'Négocier des délais et des prix')],
+    tutorId: 'tut-sophie',
+    accent: 'navy',
+    premium: true,
+    modules: [
+      { title: L('Leading meetings', 'Animer une réunion'), lessons: [
+        { id: 'les-bb1', title: 'Ouvrir et clore une réunion', minutes: 25, kind: 'video', videoSec: 300 },
+        { id: 'les-bb2', title: 'Négocier un accord', minutes: 30, kind: 'speaking', videoSec: 290 },
+      ] },
+    ],
+  },
+  {
+    id: 'crs-policy',
+    area: 'policy',
+    title: L('Public Policy & Development French', 'Français des politiques publiques'),
+    summary: L('Programme design, stakeholder meetings and reporting language for development practitioners.', 'Conception de programmes, réunions avec les partenaires et rédaction de rapports.'),
+    levels: 'B1',
+    format: L('Self-paced + monthly case clinics', 'Autonomie + ateliers mensuels d’études de cas'),
+    durationWeeks: 4,
+    outcomes: [L('Describe a programme and its impact', 'Décrire un programme et son impact'), L('Write a short briefing note', 'Rédiger une courte note de synthèse')],
+    tutorId: 'tut-jeanmarc',
+    accent: 'green',
+    premium: true,
+    modules: [
+      { title: L('Programme language', 'Le langage des programmes'), lessons: [
+        { id: 'les-p1', title: 'Objectifs, résultats et indicateurs', minutes: 25, kind: 'video', videoSec: 310 },
+        { id: 'les-p2', title: 'Rédiger une note de synthèse', minutes: 40, kind: 'assignment', videoSec: 295 },
+        { id: 'les-final-b1', title: 'Évaluation de fin de niveau B1', minutes: 50, kind: 'assessment', videoSec: 300 },
+      ] },
+    ],
+  },
+
+  /* ---------------- B2 ---------------- */
+  {
+    id: 'crs-business-b2',
+    area: 'business',
+    title: L('Business French: Persuade & Present', 'Français des affaires : convaincre et présenter'),
+    summary: L('Present complex projects, defend a budget and write reports that colleagues act on.', 'Présenter des projets complexes, défendre un budget et rédiger des rapports suivis d’effet.'),
+    levels: 'B2',
+    format: L('Self-paced lessons + weekly live practice', 'Leçons en autonomie + pratique en direct hebdomadaire'),
+    durationWeeks: 5,
+    outcomes: [L('Defend a proposal in a meeting', 'Défendre une proposition en réunion'), L('Write a structured report', 'Rédiger un rapport structuré')],
+    tutorId: 'tut-sophie',
+    accent: 'burgundy',
+    premium: true,
+    modules: [
+      { title: L('Persuading', 'Convaincre'), lessons: [
+        { id: 'les-bc1', title: 'Défendre un budget', minutes: 30, kind: 'video', videoSec: 305 },
+        { id: 'les-bc2', title: 'Rédiger un rapport d’activité', minutes: 45, kind: 'assignment', videoSec: 295 },
+      ] },
+    ],
+  },
+  {
+    id: 'crs-diplomacy',
+    area: 'diplomacy',
+    title: L('French for Diplomacy', 'Le français de la diplomatie'),
+    summary: L('Protocol, formal registers and multilateral meeting language for international careers.', 'Protocole, registre soutenu et langage des réunions multilatérales.'),
+    levels: 'B2',
+    format: L('Cohort programme with live seminars', 'Programme en cohorte avec séminaires en direct'),
+    durationWeeks: 6,
+    outcomes: [L('Use formal registers appropriately', 'Employer le registre soutenu à bon escient'), L('Summarise a position in a briefing', 'Résumer une position dans une note'), L('Follow and contribute to a plenary session', 'Suivre une séance plénière et y intervenir')],
+    tutorId: 'tut-jeanmarc',
+    accent: 'navy',
+    premium: true,
+    modules: [
+      { title: L('Protocol & register', 'Protocole et registre'), lessons: [
+        { id: 'les-d1', title: 'Les formules de politesse officielles', minutes: 25, kind: 'reading', videoSec: 320 },
+        { id: 'les-d2', title: 'Intervenir en séance', minutes: 30, kind: 'speaking', videoSec: 275 },
+      ] },
+    ],
+  },
+  {
     id: 'crs-exams',
     area: 'exams',
-    title: L('DELF / DALF / TCF / TEF Preparation', 'Préparation DELF / DALF / TCF / TEF'),
-    summary: L('Timed practice, marking guides and targeted feedback for each exam paper, from DELF A2 to DALF C2.', 'Épreuves chronométrées, grilles d’évaluation et retours ciblés pour chaque épreuve, du DELF A2 au DALF C2.'),
-    levels: 'A2–C2',
+    title: L('DELF B2 & TCF Preparation', 'Préparation DELF B2 et TCF'),
+    summary: L('Timed practice, marking guides and targeted feedback for each paper of the DELF B2 and the TCF.', 'Épreuves chronométrées, grilles d’évaluation et retours ciblés pour chaque épreuve du DELF B2 et du TCF.'),
+    levels: 'B2',
     format: L('Structured exam track + mock tests', 'Parcours structuré + examens blancs'),
-    durationWeeks: 10,
+    durationWeeks: 5,
     outcomes: [L('Understand each paper’s format', 'Maîtriser le format de chaque épreuve'), L('Manage time under exam conditions', 'Gérer son temps en conditions d’examen')],
     tutorId: 'tut-aicha',
     accent: 'gold',
@@ -279,18 +336,21 @@ export const COURSES: Course[] = [
       { title: L('Exam formats', 'Les formats d’examen'), lessons: [
         { id: 'les-x1', title: 'Compréhension orale : stratégies', minutes: 25, kind: 'video', videoSec: 320 },
         { id: 'les-x2', title: 'Examen blanc — production écrite', minutes: 60, kind: 'assignment', videoSec: 275 },
+        { id: 'les-final-b2', title: 'Évaluation de fin de niveau B2', minutes: 50, kind: 'assessment', videoSec: 300 },
       ] },
     ],
   },
+
+  /* ---------------- C1 ---------------- */
   {
     id: 'crs-advanced',
     area: 'conversational',
     title: L('Advanced French: Debate & Expression', 'Français avancé : débat et expression'),
-    summary: L('Argue, persuade and write with nuance: debates, editorials and specialist topics for C1–C2 speakers.', 'Argumenter, convaincre et écrire avec nuance : débats, tribunes et sujets spécialisés pour les niveaux C1–C2.'),
-    levels: 'C1–C2',
+    summary: L('Argue, persuade and write with nuance: debates, editorials and specialist topics.', 'Argumenter, convaincre et écrire avec nuance : débats, tribunes et sujets spécialisés.'),
+    levels: 'C1',
     format: L('Live debate seminars + guided writing', 'Séminaires de débat en direct + écriture guidée'),
-    durationWeeks: 12,
-    outcomes: [L('Defend a position and rebut objections', 'Défendre une position et réfuter les objections'), L('Shift register precisely, from formal to familiar', 'Changer de registre avec précision, du soutenu au familier'), L('Write a structured editorial', 'Rédiger une tribune structurée')],
+    durationWeeks: 7,
+    outcomes: [L('Defend a position and rebut objections', 'Défendre une position et réfuter les objections'), L('Write a structured editorial', 'Rédiger une tribune structurée')],
     tutorId: 'tut-jeanmarc',
     accent: 'navy',
     premium: true,
@@ -301,15 +361,95 @@ export const COURSES: Course[] = [
       ] },
     ],
   },
+  {
+    id: 'crs-diplomacy-c1',
+    area: 'diplomacy',
+    title: L('Diplomatic Drafting & Negotiation', 'Rédaction et négociation diplomatiques'),
+    summary: L('Draft communiqués, negotiate wording and chair working sessions in formal French.', 'Rédiger des communiqués, négocier une formulation et présider des séances de travail.'),
+    levels: 'C1',
+    format: L('Cohort programme with live seminars', 'Programme en cohorte avec séminaires en direct'),
+    durationWeeks: 7,
+    outcomes: [L('Draft a joint communiqué', 'Rédiger un communiqué conjoint'), L('Chair a working session', 'Présider une séance de travail')],
+    tutorId: 'tut-jeanmarc',
+    accent: 'green',
+    premium: true,
+    modules: [
+      { title: L('Drafting', 'La rédaction'), lessons: [
+        { id: 'les-dc1', title: 'Le communiqué conjoint', minutes: 35, kind: 'reading', videoSec: 310 },
+        { id: 'les-dc2', title: 'Négocier une formulation', minutes: 35, kind: 'speaking', videoSec: 290 },
+      ] },
+    ],
+  },
+  {
+    id: 'crs-exams-c1',
+    area: 'exams',
+    title: L('DALF C1 Preparation', 'Préparation DALF C1'),
+    summary: L('Synthesis, argued essays and the oral defence of the DALF C1, under real exam timing.', 'Synthèse, essai argumenté et soutenance orale du DALF C1, en conditions réelles.'),
+    levels: 'C1',
+    format: L('Structured exam track + mock tests', 'Parcours structuré + examens blancs'),
+    durationWeeks: 6,
+    outcomes: [L('Write a synthesis from several documents', 'Rédiger une synthèse de documents'), L('Defend a point of view orally', 'Défendre un point de vue à l’oral')],
+    tutorId: 'tut-aicha',
+    accent: 'gold',
+    premium: true,
+    modules: [
+      { title: L('The DALF C1 papers', 'Les épreuves du DALF C1'), lessons: [
+        { id: 'les-xc1', title: 'La synthèse de documents', minutes: 40, kind: 'video', videoSec: 315 },
+        { id: 'les-xc2', title: 'Examen blanc — soutenance orale', minutes: 45, kind: 'speaking', videoSec: 285 },
+        { id: 'les-final-c1', title: 'Évaluation de fin de niveau C1', minutes: 60, kind: 'assessment', videoSec: 300 },
+      ] },
+    ],
+  },
+
+  /* ---------------- C2 ---------------- */
+  {
+    id: 'crs-mastery',
+    area: 'conversational',
+    title: L('Mastery: Style & Nuance', 'Maîtrise : style et nuances'),
+    summary: L('Idiom, irony, literary registers and precise rewording, for near-native expression on any topic.', 'Expressions idiomatiques, ironie, registres littéraires et reformulation précise, pour s’exprimer comme un natif.'),
+    levels: 'C2',
+    format: L('Live seminars + guided writing', 'Séminaires en direct + écriture guidée'),
+    durationWeeks: 8,
+    outcomes: [L('Shift register precisely, from formal to familiar', 'Changer de registre avec précision, du soutenu au familier'), L('Rephrase with exact nuance', 'Reformuler avec la nuance exacte')],
+    tutorId: 'tut-jeanmarc',
+    accent: 'navy',
+    premium: true,
+    modules: [
+      { title: L('Style', 'Le style'), lessons: [
+        { id: 'les-m1', title: 'Jouer avec les registres', minutes: 35, kind: 'video', videoSec: 305 },
+        { id: 'les-m2', title: 'L’ironie et le sous-entendu', minutes: 35, kind: 'reading', videoSec: 295 },
+      ] },
+    ],
+  },
+  {
+    id: 'crs-exams-c2',
+    area: 'exams',
+    title: L('DALF C2 Preparation', 'Préparation DALF C2'),
+    summary: L('The integrated DALF C2 papers: listen, read, then speak and write a structured response.', 'Les épreuves intégrées du DALF C2 : écouter, lire, puis produire une réponse structurée à l’oral et à l’écrit.'),
+    levels: 'C2',
+    format: L('Structured exam track + mock tests', 'Parcours structuré + examens blancs'),
+    durationWeeks: 8,
+    outcomes: [L('Master the integrated C2 format', 'Maîtriser le format intégré du C2'), L('Write a structured article from a dossier', 'Rédiger un article structuré à partir d’un dossier')],
+    tutorId: 'tut-aicha',
+    accent: 'gold',
+    premium: true,
+    modules: [
+      { title: L('The DALF C2 papers', 'Les épreuves du DALF C2'), lessons: [
+        { id: 'les-xm1', title: 'Compréhension et production orales', minutes: 45, kind: 'video', videoSec: 320 },
+        { id: 'les-xm2', title: 'Examen blanc — production écrite', minutes: 60, kind: 'assignment', videoSec: 290 },
+        { id: 'les-final-c2', title: 'Évaluation de fin de niveau C2', minutes: 60, kind: 'assessment', videoSec: 300 },
+      ] },
+    ],
+  },
 ];
 
 export const PATHWAYS: Pathway[] = [
   { level: 'A1', name: L('Foundations', 'Les fondations'), canDo: L('Introduce yourself and handle simple, familiar exchanges.', 'Se présenter et gérer des échanges simples et familiers.'), weeks: 10, courseIds: ['crs-everyday', 'crs-conversation'] },
-  { level: 'A2', name: L('Everyday confidence', 'L’aisance au quotidien'), canDo: L('Discuss routine matters, work and immediate needs.', 'Parler de la routine, du travail et des besoins immédiats.'), weeks: 12, courseIds: ['crs-conversation', 'crs-business', 'crs-trade'] },
-  { level: 'B1', name: L('Independent communication', 'Communication autonome'), canDo: L('Handle most work and travel situations; explain ideas and plans.', 'Gérer la plupart des situations professionnelles ; expliquer idées et projets.'), weeks: 14, courseIds: ['crs-business', 'crs-policy', 'crs-career'] },
-  { level: 'B2', name: L('Professional fluency', 'Aisance professionnelle'), canDo: L('Argue a position, negotiate and present complex topics clearly.', 'Défendre une position, négocier et présenter des sujets complexes.'), weeks: 16, courseIds: ['crs-diplomacy', 'crs-exams'] },
-  { level: 'C1', name: L('Advanced', 'Niveau avancé'), canDo: L('Persuade, write detailed reports and follow fast, natural speech with ease.', 'Convaincre, rédiger des rapports détaillés et suivre un débit naturel rapide sans effort.'), weeks: 20, courseIds: ['crs-advanced', 'crs-diplomacy', 'crs-exams'] },
-  { level: 'C2', name: L('Mastery', 'Maîtrise'), canDo: L('Express yourself with near-native precision and nuance, on any topic.', 'S’exprimer avec une précision et des nuances proches d’un locuteur natif, sur tout sujet.'), weeks: 24, courseIds: ['crs-advanced', 'crs-exams'] },
+  { level: 'A2', name: L('Everyday confidence', 'L’aisance au quotidien'), canDo: L('Discuss routine matters, work and immediate needs.', 'Parler de la routine, du travail et des besoins immédiats.'), weeks: 12, courseIds: ['crs-business', 'crs-trade'] },
+  { level: 'B1', name: L('Independent communication', 'Communication autonome'), canDo: L('Handle most work and travel situations; explain ideas and plans.', 'Gérer la plupart des situations professionnelles ; expliquer idées et projets.'), weeks: 14, courseIds: ['crs-career', 'crs-business-b1', 'crs-policy'] },
+  { level: 'B2', name: L('Professional fluency', 'Aisance professionnelle'), canDo: L('Argue a position, negotiate and present complex topics clearly.', 'Défendre une position, négocier et présenter des sujets complexes.'), weeks: 16, courseIds: ['crs-business-b2', 'crs-diplomacy', 'crs-exams'] },
+  { level: 'C1', name: L('Advanced', 'Niveau avancé'), canDo: L('Persuade, write detailed reports and follow fast, natural speech with ease.', 'Convaincre, rédiger des rapports détaillés et suivre un débit naturel rapide sans effort.'), weeks: 20, courseIds: ['crs-advanced', 'crs-diplomacy-c1', 'crs-exams-c1'] },
+  { level: 'C2', name: L('Mastery', 'Maîtrise'), canDo: L('Express yourself with near-native precision and nuance, on any topic.', 'S’exprimer avec une précision et des nuances proches d’un locuteur natif, sur tout sujet.'), weeks: 24, courseIds: ['crs-mastery', 'crs-exams-c2'] },
 ];
 
 export const LEARNERS: Learner[] = [

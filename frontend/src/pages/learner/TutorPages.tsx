@@ -1,5 +1,5 @@
 import { COURSES, LEVEL_ORDER, TUTORS, TUTOR_PROFILES, type CefrLevel, type Proficiency, type Tutor } from '@laporte/shared';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { Avatar } from '../../components/3d/Portrait';
 import { EmptyState } from '../../components/ui/Controls';
@@ -46,7 +46,7 @@ export function TutorsDirectoryPage() {
   });
   return (
     <>
-      <PageHead title={fr ? 'Nos tuteurs' : 'Our tutors'} sub={fr ? 'Découvrez le parcours, les spécialités et les avis de chaque tuteur, puis réservez une séance.' : 'See each tutor’s background, specialities and reviews, then book a session.'} />
+      <PageHead title={fr ? 'Nos tuteurs' : 'Our tutors'} sub={fr ? 'Découvrez le parcours, les spécialités et les cours de chaque tuteur.' : 'Look up each tutor’s background, expertise and the courses they teach.'} />
       <div className="tp-filters">
         <label className="tp-search">
           <Icon name="search" size={17} />
@@ -68,7 +68,7 @@ export function TutorsDirectoryPage() {
           {list.map((t) => {
             const p = TUTOR_PROFILES[t.id];
             return (
-              <article key={t.id} className="tp-card">
+              <Link key={t.id} to={`/app/tutors/${t.id}`} className="tp-card" aria-label={`${t.name} — ${fr ? 'voir le profil' : 'view profile'}`}>
                 <div className="tp-card-cover" aria-hidden />
                 <Avatar spec={t.portrait} size={76} />
                 <h2 className="tp-card-name">{t.name}</h2>
@@ -76,11 +76,8 @@ export function TutorsDirectoryPage() {
                 <p className="tiny muted">{p?.location ?? ''} · {t.levels}</p>
                 <p className="tp-card-rating"><Stars value={t.rating} /> {t.rating} <span className="muted">({t.reviews})</span></p>
                 <div className="tp-chips">{t.specialities.slice(0, 3).map((s) => <span key={s} className="chip chip-outline">{s}</span>)}</div>
-                <div className="tp-card-actions">
-                  <Link to={`/app/tutors/${t.id}`} className="btn btn-secondary btn-sm">{fr ? 'Voir le profil' : 'View profile'}</Link>
-                  <Link to={`/app/book?tutor=${t.id}`} className="btn btn-primary btn-sm">{fr ? 'Réserver' : 'Book'}</Link>
-                </div>
-              </article>
+                <span className="tp-card-cta">{fr ? 'Voir le profil' : 'View profile'} →</span>
+              </Link>
             );
           })}
         </div>
@@ -93,153 +90,218 @@ export function TutorsDirectoryPage() {
 
 /* ---------------- Profile ---------------- */
 
+const PROF_DOTS: Record<Proficiency, number> = { native: 5, fluent: 4, professional: 4, conversational: 2 };
+const SECTIONS = [
+  { id: 'about', en: 'About', fr: 'À propos' },
+  { id: 'expertise', en: 'Expertise', fr: 'Expertise' },
+  { id: 'experience', en: 'Experience', fr: 'Parcours' },
+  { id: 'courses', en: 'Courses', fr: 'Cours' },
+  { id: 'reviews', en: 'Reviews', fr: 'Avis' },
+] as const;
+
+/** Highlights the section tab of whatever part of the profile is on screen. */
+function useActiveSection(ids: readonly string[]) {
+  const [active, setActive] = useState(ids[0]);
+  useEffect(() => {
+    if (typeof IntersectionObserver === 'undefined') return;
+    const io = new IntersectionObserver((entries) => {
+      const seen = entries.filter((e) => e.isIntersecting).sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top)[0];
+      if (seen) setActive(seen.target.id.replace('tp-', ''));
+    }, { rootMargin: '-120px 0px -55% 0px' });
+    ids.forEach((id) => { const el = document.getElementById(`tp-${id}`); if (el) io.observe(el); });
+    return () => io.disconnect();
+  }, [ids]);
+  return active;
+}
+
 export function TutorProfilePage() {
   const { id } = useParams();
   const { l, lang } = useI18n();
   const fr = lang === 'fr';
   const { learner, threads, userId } = useStore();
   const t = TUTORS.find((x) => x.id === id);
+  const active = useActiveSection(SECTIONS.map((s) => s.id));
   if (!t) return <div className="card"><EmptyState icon="user" title={fr ? 'Tuteur introuvable' : 'Tutor not found'} /><p style={{ textAlign: 'center' }}><Link to="/app/tutors" className="link">{fr ? 'Voir tous les tuteurs' : 'See all tutors'}</Link></p></div>;
   const p = TUTOR_PROFILES[t.id];
   const fits = teachesLevel(t, learner.level);
   const thread = threads.find((th) => th.participantIds.includes(userId) && th.participantIds.includes(t.id));
   const courses = COURSES.filter((c) => c.tutorId === t.id);
-  const days = fr ? ['', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'] : ['', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
   const others = TUTORS.filter((x) => x.id !== t.id);
-  const maxEndorse = p ? Math.max(1, ...Object.values(p.endorsements)) : 1;
-  return (
-    <div className="tp-layout">
-      <div className="tp-main">
-        {/* Header card */}
-        <section className="tp-section tp-top" aria-labelledby="tp-name">
-          <div className="tp-cover" aria-hidden />
-          <div className="tp-top-body">
-            <span className="tp-avatar"><Avatar spec={t.portrait} size={128} /></span>
-            <div className="tp-top-row">
-              <div style={{ minWidth: 0 }}>
-                <h1 id="tp-name" className="tp-name">{t.name}</h1>
-                <p className="tp-headline">{p ? l(p.headline) : l(t.title)}</p>
-                <p className="tp-meta">
-                  {p && <><Icon name="globe" size={14} /> {p.location} · </>}
-                  <Stars value={t.rating} /> {t.rating} · {t.reviews} {fr ? 'avis' : 'reviews'}
-                  {p && <> · {fr ? 'chez La Porte depuis' : 'with La Porte since'} {p.since}</>}
-                </p>
-                <div className="tp-badges">
-                  <span className={`chip ${fits ? 'chip-gold' : 'chip-outline'}`}>{fits ? (fr ? `✓ Enseigne votre niveau (${learner.level})` : `✓ Teaches your level (${learner.level})`) : fr ? `Niveaux ${t.levels}` : `Levels ${t.levels}`}</span>
-                  {p && <span className="chip chip-outline">{fr ? 'Accent :' : 'Accent:'} {l(p.accent)}</span>}
-                </div>
-              </div>
-              <div className="tp-actions">
-                <Link to={`/app/book?tutor=${t.id}`} className="btn btn-primary"><Icon name="calendar" size={16} /> {fr ? 'Réserver une séance' : 'Book a session'}</Link>
-                {thread ? <Link to={`/app/messages?thread=${thread.id}`} className="btn btn-secondary"><Icon name="message" size={16} /> {fr ? 'Message' : 'Message'}</Link> : <span className="tiny muted" style={{ maxWidth: 220 }}>{fr ? 'La messagerie s’ouvre après votre première séance.' : 'Messaging opens after your first session.'}</span>}
-              </div>
-            </div>
-            {p && (
-              <dl className="tp-stats">
-                <div><dt>{fr ? 'Années d’enseignement' : 'Years teaching'}</dt><dd>{p.yearsTeaching}</dd></div>
-                <div><dt>{fr ? 'Apprenants' : 'Learners taught'}</dt><dd>{p.learnersTaught}</dd></div>
-                <div><dt>{fr ? 'Séances' : 'Sessions led'}</dt><dd>{p.sessionsLed.toLocaleString(fr ? 'fr-FR' : 'en-GB')}</dd></div>
-              </dl>
-            )}
-          </div>
-        </section>
+  const first = t.name.split(' ')[0];
+  const jump = (sid: string) => document.getElementById(`tp-${sid}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 
+  const bookCard = (
+    <section className="tp-book" aria-label={fr ? `Séances avec ${first}` : `Sessions with ${first}`}>
+      <h2 className="tp-book-title">{fr ? `Séances privées avec ${first}` : `Private sessions with ${first}`}</h2>
+      <ul className="tp-book-facts">
+        <li><Icon name="checkCircle" size={16} /> {fr ? 'Votre première conversation est offerte' : 'Your first conversation is free'}</li>
+        <li><Icon name="card" size={16} /> {fr ? 'Ensuite, 1 crédit de séance' : 'Then 1 session credit per session'}</li>
+        <li><Icon name="meet" size={16} /> {fr ? 'En ligne sur Google Meet' : 'Online on Google Meet'}</li>
+        <li><Icon name="award" size={16} /> {fr ? `Niveaux ${t.levels}` : `Levels ${t.levels}`}{fits && <span className="tp-fit">{fr ? 'votre niveau' : 'your level'}</span>}</li>
+      </ul>
+      <Link to={`/app/book?tutor=${t.id}`} className="btn btn-primary tp-book-btn"><Icon name="calendar" size={16} /> {fr ? 'Réserver une séance' : 'Book a session'}</Link>
+      {thread ? <Link to={`/app/messages?thread=${thread.id}`} className="btn btn-secondary tp-book-btn"><Icon name="message" size={16} /> {fr ? `Écrire à ${first}` : `Message ${first}`}</Link> : <p className="tiny muted" style={{ margin: 0, textAlign: 'center' }}>{fr ? 'La messagerie s’ouvre après votre première séance.' : 'Messaging opens after your first session.'}</p>}
+    </section>
+  );
+
+  return (
+    <div className="tp-page">
+      {/* ---------- Header ---------- */}
+      <header className="tp-hero">
+        <div className="tp-hero-cover" aria-hidden><span /><span /><span /></div>
+        <div className="tp-hero-body">
+          <span className="tp-hero-avatar"><Avatar spec={t.portrait} size={136} expression="joy" /></span>
+          <div className="tp-hero-text">
+            <div className="tp-hero-name-row">
+              <h1 className="tp-hero-name">{t.name}</h1>
+              <span className="tp-verified" title={fr ? 'Tuteur certifié La Porte' : 'Certified La Porte tutor'}><Icon name="check" size={12} stroke={3} /> {fr ? 'Tuteur La Porte' : 'La Porte tutor'}</span>
+            </div>
+            <p className="tp-hero-headline">{p ? l(p.headline) : l(t.title)}</p>
+            <div className="tp-hero-chips">
+              {p && <span><Icon name="globe" size={14} /> {p.location}</span>}
+              <span className="tp-hero-rating"><b>★ {t.rating}</b> · {t.reviews} {fr ? 'avis' : 'reviews'}</span>
+              {p && <span>{fr ? `Chez La Porte depuis ${p.since}` : `With La Porte since ${p.since}`}</span>}
+              {p && <span>{fr ? 'Accent :' : 'Accent:'} {l(p.accent)}</span>}
+            </div>
+          </div>
+        </div>
         {p && (
-          <>
-            <section className="tp-section" aria-labelledby="tp-about"><h2 id="tp-about" className="tp-h">{fr ? 'À propos' : 'About'}</h2><p className="tp-p">{l(p.about)}</p></section>
-            <section className="tp-section" aria-labelledby="tp-approach">
-              <h2 id="tp-approach" className="tp-h">{fr ? 'Ma façon d’enseigner' : 'How I teach'}</h2>
-              <ul className="tp-list">{p.approach.map((a) => <li key={a.en}><Icon name="checkCircle" size={16} /> {l(a)}</li>)}</ul>
+          <dl className="tp-facts">
+            <div><dt>{fr ? 'ans d’enseignement' : 'years teaching'}</dt><dd>{p.yearsTeaching}</dd></div>
+            <div><dt>{fr ? 'apprenants' : 'learners'}</dt><dd>{p.learnersTaught}</dd></div>
+            <div><dt>{fr ? 'séances' : 'sessions'}</dt><dd>{p.sessionsLed.toLocaleString(fr ? 'fr-FR' : 'en-GB')}</dd></div>
+            <div><dt>{fr ? 'niveaux' : 'levels'}</dt><dd>{t.levels}</dd></div>
+          </dl>
+        )}
+      </header>
+
+      {/* ---------- Section tabs ---------- */}
+      <nav className="tp-tabs" aria-label={fr ? 'Sections du profil' : 'Profile sections'}>
+        {SECTIONS.filter((s) => s.id !== 'courses' || courses.length).map((s) => (
+          <button key={s.id} type="button" className="tp-tab" aria-current={active === s.id ? 'true' : undefined} onClick={() => jump(s.id)}>{s[fr ? 'fr' : 'en']}</button>
+        ))}
+      </nav>
+
+      <div className="tp-columns">
+        <div className="tp-col-main">
+          <div className="tp-book-mobile">{bookCard}</div>
+
+          {p && (
+            <section id="tp-about" className="tp-panel" aria-labelledby="tp-about-h">
+              <h2 id="tp-about-h" className="tp-panel-h">{fr ? 'À propos' : 'About'}</h2>
+              <p className="tp-about">{l(p.about)}</p>
+              <h3 className="tp-sub">{fr ? 'Ma façon d’enseigner' : 'How I teach'}</h3>
+              <ol className="tp-approach">
+                {p.approach.map((a, i) => <li key={a.en}><span className="tp-num">{i + 1}</span><span>{l(a)}</span></li>)}
+              </ol>
             </section>
-            <section className="tp-section" aria-labelledby="tp-skills">
-              <h2 id="tp-skills" className="tp-h">{fr ? 'Spécialités' : 'Specialities'}</h2>
-              <ul className="tp-skills">
+          )}
+
+          {p && (
+            <section id="tp-expertise" className="tp-panel" aria-labelledby="tp-expertise-h">
+              <h2 id="tp-expertise-h" className="tp-panel-h">{fr ? 'Expertise' : 'Expertise'}</h2>
+              <div className="tp-endorse">
                 {Object.entries(p.endorsements).sort((a, b) => b[1] - a[1]).map(([s, n]) => (
-                  <li key={s}>
-                    <div className="row between"><strong>{s}</strong><span className="tiny muted">{fr ? `Recommandé par ${n} apprenants` : `Endorsed by ${n} learners`}</span></div>
-                    <span className="tp-bar"><span style={{ width: `${(n / maxEndorse) * 100}%` }} /></span>
+                  <span key={s} className="tp-skill"><strong>{s}</strong><span className="tp-skill-n" title={fr ? `Recommandé par ${n} apprenants` : `Endorsed by ${n} learners`}>{n}</span></span>
+                ))}
+              </div>
+              <p className="tiny muted" style={{ margin: '8px 0 0' }}>{fr ? 'Les chiffres indiquent combien d’apprenants recommandent cette compétence.' : 'Numbers show how many learners endorsed each skill.'}</p>
+              <h3 className="tp-sub">{fr ? 'Langues' : 'Languages'}</h3>
+              <ul className="tp-langs">
+                {p.languages.map((x) => (
+                  <li key={x.name}>
+                    <strong>{x.name}</strong>
+                    <span className="tp-dots" aria-label={PROF[x.level][fr ? 'fr' : 'en']}>{Array.from({ length: 5 }, (_, k) => <i key={k} data-on={k < PROF_DOTS[x.level] || undefined} />)}</span>
+                    <span className="tiny muted">{PROF[x.level][fr ? 'fr' : 'en']}</span>
                   </li>
                 ))}
               </ul>
             </section>
-            <section className="tp-section" aria-labelledby="tp-exp">
-              <h2 id="tp-exp" className="tp-h">{fr ? 'Expérience' : 'Experience'}</h2>
-              <ol className="tp-timeline">
+          )}
+
+          {p && (
+            <section id="tp-experience" className="tp-panel" aria-labelledby="tp-experience-h">
+              <h2 id="tp-experience-h" className="tp-panel-h">{fr ? 'Parcours' : 'Experience'}</h2>
+              <ol className="tp-tl">
                 {p.experience.map((e) => (
-                  <li key={e.org + e.from}>
-                    <span className="tp-org-mark" aria-hidden>{e.org.slice(0, 1)}</span>
-                    <div>
-                      <strong>{l(e.role)}</strong>
-                      <div className="small">{e.org} · {e.place}</div>
-                      <div className="tiny muted">{e.from} – {e.to ?? (fr ? 'aujourd’hui' : 'present')}</div>
-                      <p className="small" style={{ marginTop: 4 }}>{l(e.text)}</p>
-                    </div>
+                  <li key={e.org + e.from} data-now={!e.to || undefined}>
+                    <span className="tp-tl-dot" aria-hidden />
+                    <div className="tp-tl-when">{e.from} – {e.to ?? (fr ? 'aujourd’hui' : 'present')}</div>
+                    <strong className="tp-tl-role">{l(e.role)}</strong>
+                    <div className="tp-tl-org">{e.org} · {e.place}</div>
+                    <p className="tp-tl-text">{l(e.text)}</p>
                   </li>
                 ))}
               </ol>
-            </section>
-            <section className="tp-section tp-two" aria-label={fr ? 'Formation et langues' : 'Education and languages'}>
-              <div>
-                <h2 className="tp-h">{fr ? 'Formation et certifications' : 'Education & certifications'}</h2>
-                <ul className="tp-plain">
-                  {p.education.map((e) => <li key={e.org}><Icon name="book" size={15} /> <span><strong>{l(e.title)}</strong><br /><span className="small muted">{e.org} · {e.year}</span></span></li>)}
-                  {p.certifications.map((c) => <li key={c.name}><Icon name="award" size={15} /> <span><strong>{c.name}</strong><br /><span className="small muted">{c.issuer} · {c.year}</span></span></li>)}
-                </ul>
-              </div>
-              <div>
-                <h2 className="tp-h">{fr ? 'Langues' : 'Languages'}</h2>
-                <ul className="tp-plain">{p.languages.map((x) => <li key={x.name}><Icon name="globe" size={15} /> <span><strong>{x.name}</strong> <span className="small muted">· {PROF[x.level][fr ? 'fr' : 'en']}</span></span></li>)}</ul>
+              <div className="tp-creds">
+                {p.education.map((e) => (
+                  <div key={e.org} className="tp-cred"><span className="tp-cred-icon"><Icon name="book" size={16} /></span><div><span className="tp-cred-kind">{fr ? 'Formation' : 'Education'}</span><strong>{l(e.title)}</strong><span className="tiny muted">{e.org} · {e.year}</span></div></div>
+                ))}
+                {p.certifications.map((c) => (
+                  <div key={c.name} className="tp-cred"><span className="tp-cred-icon tp-cred-gold"><Icon name="award" size={16} /></span><div><span className="tp-cred-kind">{fr ? 'Certification' : 'Certification'}</span><strong>{c.name}</strong><span className="tiny muted">{c.issuer} · {c.year}</span></div></div>
+                ))}
               </div>
             </section>
-          </>
-        )}
+          )}
 
-        {courses.length > 0 && (
-          <section className="tp-section" aria-labelledby="tp-courses">
-            <h2 id="tp-courses" className="tp-h">{fr ? 'Cours enseignés' : 'Courses taught'}</h2>
-            <div className="tp-courses">{courses.map((c) => <Link key={c.id} to={`/app/courses/${c.id}`} className="tp-course"><Icon name="book" size={16} /><span><strong>{l(c.title)}</strong><br /><span className="tiny muted">{c.levels}</span></span></Link>)}</div>
-          </section>
-        )}
+          {courses.length > 0 && (
+            <section id="tp-courses" className="tp-panel" aria-labelledby="tp-courses-h">
+              <h2 id="tp-courses-h" className="tp-panel-h">{fr ? `Cours enseignés par ${first}` : `Courses ${first} teaches`}</h2>
+              <div className="tp-course-grid">
+                {courses.map((c, i) => (
+                  <Link key={c.id} to={`/app/courses/${c.id}`} className="tp-course-tile" data-tone={i % 3}>
+                    <span className="tp-course-band" aria-hidden><Icon name="book" size={18} /></span>
+                    <span className="tp-course-body"><strong>{l(c.title)}</strong><span className="chip">{c.levels}</span><span className="tp-course-link">{fr ? 'Voir le cours' : 'View course'} →</span></span>
+                  </Link>
+                ))}
+              </div>
+            </section>
+          )}
 
-        <section className="tp-section" aria-labelledby="tp-avail">
-          <div className="row between"><h2 id="tp-avail" className="tp-h">{fr ? 'Disponibilités habituelles' : 'Usual availability'}</h2><Link to={`/app/book?tutor=${t.id}`} className="link small">{fr ? 'Voir les créneaux et réserver' : 'See times and book'} →</Link></div>
-          <div className="tp-avail">{Object.entries(t.availability).filter(([, h]) => h.length).map(([d, h]) => <div key={d}><strong>{days[Number(d)]}</strong><span>{h.join(' · ')}</span></div>)}</div>
-        </section>
+          {p && (
+            <section id="tp-reviews" className="tp-panel" aria-labelledby="tp-reviews-h">
+              <h2 id="tp-reviews-h" className="tp-panel-h">{fr ? 'Avis des apprenants' : 'What learners say'}</h2>
+              <div className="tp-reviews-wrap">
+                <div className="tp-score">
+                  <span className="tp-score-n">{t.rating.toFixed(1)}</span>
+                  <Stars value={t.rating} />
+                  <span className="tiny muted">{t.reviews} {fr ? 'avis d’apprenants' : 'learner reviews'}</span>
+                </div>
+                <div className="tp-review-list">
+                  {p.reviews.map((r) => (
+                    <figure key={r.by + r.date} className="tp-quote">
+                      <blockquote>{l(r.text)}</blockquote>
+                      <figcaption>
+                        <span className="tp-quote-avatar" aria-hidden>{r.by.slice(0, 1)}</span>
+                        <span><strong>{r.by}</strong><span className="tiny muted" style={{ display: 'block' }}>{r.level} · {formatDate(r.date, lang, { month: 'long', year: 'numeric' })}</span></span>
+                        <Stars value={r.rating} />
+                      </figcaption>
+                    </figure>
+                  ))}
+                </div>
+              </div>
+            </section>
+          )}
+          <p className="tp-safety"><Icon name="lock" size={14} /> {fr ? 'Pour la sécurité de tous, les coordonnées personnelles ne sont jamais affichées : réservez et échangez via La Porte.' : 'For everyone’s safety, personal contact details are never shown: book and message through La Porte.'}</p>
+        </div>
 
-        {p && p.reviews.length > 0 && (
-          <section className="tp-section" aria-labelledby="tp-reviews">
-            <h2 id="tp-reviews" className="tp-h">{fr ? 'Avis des apprenants' : 'What learners say'} <span className="tiny muted">· {t.rating} ★ ({t.reviews})</span></h2>
-            <div className="tp-reviews">
-              {p.reviews.map((r) => (
-                <figure key={r.by + r.date} className="tp-review">
-                  <Stars value={r.rating} />
-                  <blockquote>“{l(r.text)}”</blockquote>
-                  <figcaption className="tiny muted">{r.by} · {r.level} · {formatDate(r.date, lang, { month: 'long', year: 'numeric' })}</figcaption>
-                </figure>
+        <aside className="tp-col-side">
+          <div className="tp-book-desktop">{bookCard}</div>
+          <section className="tp-panel tp-others-panel" aria-label={fr ? 'Autres tuteurs' : 'Other tutors'}>
+            <h2 className="tp-panel-h tp-panel-h-sm">{fr ? 'Autres tuteurs' : 'Other tutors'}</h2>
+            <ul className="tp-others">
+              {others.map((o) => (
+                <li key={o.id}>
+                  <Link to={`/app/tutors/${o.id}`} className="tp-other">
+                    <Avatar spec={o.portrait} size={44} />
+                    <span style={{ minWidth: 0 }}><strong>{o.name}</strong><span className="tiny muted">{o.specialities.slice(0, 2).join(' · ')} · ★ {o.rating}</span></span>
+                  </Link>
+                </li>
               ))}
-            </div>
+            </ul>
           </section>
-        )}
-        <p className="tiny muted" style={{ textAlign: 'center' }}>{fr ? 'Pour votre sécurité, les coordonnées personnelles ne sont jamais affichées : réservez et échangez via La Porte.' : 'For everyone’s safety, personal contact details are never shown: book and message through La Porte.'}</p>
+        </aside>
       </div>
-
-      {/* Side column: other tutors */}
-      <aside className="tp-side" aria-label={fr ? 'Autres tuteurs' : 'Other tutors'}>
-        <section className="tp-section">
-          <h2 className="tp-h">{fr ? 'Autres tuteurs' : 'Other tutors'}</h2>
-          <ul className="tp-others">
-            {others.map((o) => (
-              <li key={o.id}>
-                <Link to={`/app/tutors/${o.id}`} className="tp-other">
-                  <Avatar spec={o.portrait} size={44} />
-                  <span style={{ minWidth: 0 }}><strong>{o.name}</strong><span className="tiny muted" style={{ display: 'block' }}>{TUTOR_PROFILES[o.id] ? l(TUTOR_PROFILES[o.id].headline) : l(o.title)}</span></span>
-                </Link>
-              </li>
-            ))}
-          </ul>
-          <Link to="/app/tutors" className="btn btn-ghost btn-sm" style={{ marginTop: 8 }}>{fr ? 'Tous les tuteurs' : 'All tutors'}</Link>
-        </section>
-      </aside>
     </div>
   );
 }

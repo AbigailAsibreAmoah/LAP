@@ -10,6 +10,8 @@ import './styles/cafe.css';
 import './styles/books.css';
 import './styles/passport-map.css';
 import './styles/note.css';
+import './styles/tutors.css';
+import './styles/tutor-profile.css';
 import './styles/mobile.css';
 
 listenForStaleBuilds();

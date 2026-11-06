@@ -1,4 +1,4 @@
-import { accessLevel, canBuyLevel, canStudy, courseOpen, courseRange, COURSES } from '@laporte/shared';
+import { accessLevel, canBuyLevel, canStudy, courseOpen, courseRange, COURSES, PATHWAYS } from '@laporte/shared';
 import { right, takePlacement, wrong } from './placementHelper';
 import request from 'supertest';
 import { beforeEach, describe, expect, it } from 'vitest';
@@ -68,7 +68,7 @@ describe('courses follow the level', () => {
   it('works out course access from the course’s first level', () => {
     const a1 = { level: 'A1' as const };
     const business = COURSES.find((c) => c.id === 'crs-business')!;
-    expect(courseRange(business)).toEqual(['A2', 'C1']);
+    expect(courseRange(business)).toEqual(['A2', 'A2']);
     expect(courseOpen(a1, business)).toBe(false);
     expect(courseOpen({ level: 'A1', unlockedLevel: 'A2' }, business)).toBe(true);
     expect(accessLevel({ level: 'B1', unlockedLevel: 'A2' })).toBe('B1');
@@ -79,5 +79,31 @@ describe('courses follow the level', () => {
     expect(canStudy({ level: 'B1' }, 'B1')).toBe(true);
     expect(canStudy({ level: 'B1', unlockedLevel: 'B2' }, 'B2')).toBe(true);
     expect(courseOpen({ level: 'B1' }, COURSES.find((c) => c.id === 'crs-everyday')!)).toBe(false);
+  });
+});
+
+describe('one level per course', () => {
+  it('never mixes levels in a course, and each level ends with its assessment', () => {
+    for (const c of COURSES) expect(c.levels).toMatch(/^[ABC][12]$/);
+    for (const p of PATHWAYS) {
+      const courses = p.courseIds.map((id) => COURSES.find((c) => c.id === id)!);
+      for (const c of courses) expect(c.levels).toBe(p.level);
+      const last = courses[courses.length - 1].modules.at(-1)!.lessons.at(-1)!;
+      expect(last.kind).toBe('assessment');
+      // the assessment is the only one, at the very end of the level
+      expect(courses.flatMap((c) => c.modules.flatMap((m) => m.lessons)).filter((l) => l.kind === 'assessment')).toHaveLength(1);
+    }
+    expect(PATHWAYS.map((p) => p.level)).toEqual(['A1', 'A2', 'B1', 'B2', 'C1', 'C2']);
+  });
+
+  it('gives every lesson its course level and publishes the assessments', () => {
+    const { lessons } = contentStore.get();
+    for (const l of lessons) {
+      const c = COURSES.find((x) => x.id === l.courseId);
+      if (c) expect(l.level).toBe(c.levels);
+    }
+    const finals = lessons.filter((l) => l.kind === 'assessment');
+    expect(finals).toHaveLength(6);
+    for (const l of finals) expect(l.status).toBe('published');
   });
 });

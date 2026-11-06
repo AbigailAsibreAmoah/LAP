@@ -112,6 +112,7 @@ export function NoteContent({ expr, slot: liveSlot, hour, inWindow }: { expr: Da
   const speakText = slot === 'everyday' || slot === 'work' ? expr[slot].fr : expr.fr;
   return (
     <div className={`dn${inWindow ? ' dn-window' : ''}`}>
+      <div className={inWindow ? 'dn-fit' : 'dn-plain'}>
       <div className="dn-head">
         <span className="dn-kicker" lang="fr">Expression du jour{slot !== 'meaning' && <> · {meta.title[fr ? 'fr' : 'en']}</>}</span>
         <button type="button" className="dn-icon" onClick={() => listen(speakText)} aria-label={fr ? 'Écouter' : 'Listen'}><Icon name="headphones" size={15} /></button>
@@ -125,13 +126,14 @@ export function NoteContent({ expr, slot: liveSlot, hour, inWindow }: { expr: Da
         </div>
         <span className="dn-next">{peek ? <button type="button" className="dn-link" onClick={() => setPeek(null)}>{fr ? 'Revenir à maintenant' : 'Back to now'}</button> : next ? `${fr ? 'Ensuite' : 'Next'} · ${String(next.hour).padStart(2, '0')}:00 · ${next.title[fr ? 'fr' : 'en']}` : fr ? 'Nouvelle expression demain' : 'New expression tomorrow'}</span>
       </div>
+      </div>
     </div>
   );
 }
 
 /* ---------------- The desktop window ---------------- */
 
-type PipWindow = Window & { documentPictureInPicture?: { requestWindow: (o: { width: number; height: number }) => Promise<Window> } };
+type PipWindow = Window & { documentPictureInPicture?: { requestWindow: (o: { width: number; height: number; disallowReturnToOpener?: boolean }) => Promise<Window> } };
 let noteWindow: Window | null = null;
 let alwaysOnTop = false;
 const listeners = new Set<() => void>();
@@ -144,9 +146,41 @@ export const canFloatOnTop = () => typeof window !== 'undefined' && 'documentPic
 function copyStyles(target: Document) {
   for (const node of document.querySelectorAll('link[rel="stylesheet"], style')) target.head.appendChild(node.cloneNode(true));
   target.documentElement.lang = document.documentElement.lang;
+  target.documentElement.className = 'dn-desk-html';
   target.body.style.margin = '0';
   target.body.className = 'dn-desk';
   target.title = 'La Porte · Expression du jour';
+}
+
+/** The window is the note: scale the note so it always fits, never scrolls. */
+function fitNote(win: Window) {
+  const el = win.document.querySelector<HTMLElement>('.dn-window .dn-fit');
+  if (!el) return;
+  el.style.zoom = '1';
+  const box = el.parentElement!;
+  const room = box.clientHeight - parseFloat(win.getComputedStyle(box).paddingTop) - parseFloat(win.getComputedStyle(box).paddingBottom);
+  const z = Math.min(1.25, room / el.scrollHeight, (box.clientWidth - 36) / Math.max(1, el.scrollWidth));
+  el.style.zoom = String(Math.max(0.5, Math.round(z * 100) / 100));
+}
+
+/** Drag the note anywhere to move the window across the desktop (pop-up windows).
+ *  A floating picture-in-picture window is moved by the browser itself, from its top bar. */
+function enableDrag(win: Window) {
+  const doc = win.document;
+  let start: { x: number; y: number; left: number; top: number } | null = null;
+  doc.addEventListener('pointerdown', (e) => {
+    if (alwaysOnTop || e.button !== 0 || (e.target as Element).closest('button, a, input, [role="tab"]')) return;
+    start = { x: e.screenX, y: e.screenY, left: win.screenX, top: win.screenY };
+    doc.body.classList.add('dn-dragging');
+    (e.target as Element).setPointerCapture?.(e.pointerId);
+  });
+  doc.addEventListener('pointermove', (e) => {
+    if (!start) return;
+    try { win.moveTo(start.left + e.screenX - start.x, start.top + e.screenY - start.y); } catch { /* browser refused: it still moves by its title bar */ }
+  });
+  const stop = () => { start = null; doc.body.classList.remove('dn-dragging'); };
+  doc.addEventListener('pointerup', stop);
+  doc.addEventListener('pointercancel', stop);
 }
 
 /** Opens (or focuses) the desktop note. Must be called from a click. */
@@ -155,7 +189,7 @@ export async function openDesktopNote() {
   const w = window as PipWindow;
   let win: Window | null = null;
   if (w.documentPictureInPicture) {
-    win = await w.documentPictureInPicture.requestWindow({ width: 340, height: 330 });
+    win = await w.documentPictureInPicture.requestWindow({ width: 340, height: 330, disallowReturnToOpener: true });
     alwaysOnTop = true;
   } else {
     win = window.open('', 'laporte-note', 'popup=yes,width=360,height=360');
@@ -168,6 +202,13 @@ export async function openDesktopNote() {
   root.id = 'note-root';
   win.document.body.appendChild(root);
   win.addEventListener('pagehide', () => { noteWindow = null; emit(); });
+  const refit = () => fitNote(win!);
+  win.addEventListener('resize', refit);
+  // re-fit whenever the note's content changes (new slot, quiz answer, language)
+  let frame = 0;
+  new (win as unknown as typeof globalThis).MutationObserver(() => { win!.cancelAnimationFrame(frame); frame = win!.requestAnimationFrame(refit); })
+    .observe(root, { childList: true, subtree: true, characterData: true });
+  enableDrag(win);
   noteWindow = win;
   emit();
   return alwaysOnTop ? 'on-top' : 'window';

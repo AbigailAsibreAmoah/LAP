@@ -30,7 +30,7 @@ function pickResume(store: Pick<AppStore, 'content' | 'learner'>) {
 type Tone = 'burgundy' | 'gold' | 'navy' | 'green' | 'sky';
 type PlanItem = { id: string; icon: IconName; tone?: 'urgent' | 'done'; title: string; meta: string; to?: string; cta?: string };
 
-const KIND_ICON: Record<LessonKind, IconName> = { video: 'video', reading: 'book', quiz: 'quiz', speaking: 'mic', assignment: 'edit', live: 'meet' };
+const KIND_ICON: Record<LessonKind, IconName> = { video: 'video', reading: 'book', quiz: 'quiz', speaking: 'mic', assignment: 'edit', live: 'meet', assessment: 'award' };
 
 /**
  * Builds today's ordered plan from what the demo state actually contains:
