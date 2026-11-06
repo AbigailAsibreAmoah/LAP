@@ -10,6 +10,7 @@ import { Icon, type IconName } from '../components/ui/Icon';
 import { useRouteFocus } from '../hooks/useRouteFocus';
 import { ClassmateChat } from '../features/community/ClassmateChat';
 import { useUnread } from '../features/messages/unread';
+import { DesktopNoteHost } from '../features/expressions/DailyNote';
 import { readLocal, removeLocal, writeLocal } from '../utils/storage';
 import { START_PENDING_KEY } from '../pages/onboarding/StartPage';
 import { useI18n } from '../i18n/I18nProvider';
@@ -67,6 +68,7 @@ const NAV: Record<Role, NavGroup[]> = {
     { key: 'app.operations', items: [
       { to: '/admin/bookings', key: 'app.bookings', icon: 'calendar', mobile: true },
       { to: '/admin/payments', key: 'app.payments', icon: 'card', mobile: true },
+      { to: '/admin/messages', key: 'app.supportInbox', icon: 'message', mobile: true },
       { to: '/admin/support', key: 'app.support', icon: 'support' },
     ] },
     { key: 'app.people', items: [
@@ -172,7 +174,7 @@ export function AppLayout({ role }: { role: Role }) {
                       {isActive && <motion.span layoutId="side-pill" className="side-pill" transition={spring.snappy} />}
                       <Icon name={item.icon} size={18} stroke={isActive ? 2 : 1.6} />
                       <span className="side-text">{t(item.key)}</span>
-                      {item.key === 'app.messages' && unreadMessages > 0 && (
+                      {(item.key === 'app.messages' || item.key === 'app.supportInbox') && unreadMessages > 0 && (
                         <span className="chip chip-burgundy side-badge" style={{ marginLeft: 'auto', minHeight: 20, padding: '0 7px' }} aria-label={`${unreadMessages} unread`}>
                           {unreadMessages}
                         </span>
@@ -228,6 +230,7 @@ export function AppLayout({ role }: { role: Role }) {
         </main>
       </div>
 
+      {role === 'learner' && <DesktopNoteHost />}
       <nav className="bottom-nav" aria-label="Workspace (mobile)">
         {mobileItems.slice(0, 5).map((item) => (
           <NavLink key={item.to} to={item.to} end={item.end}>

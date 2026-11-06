@@ -329,6 +329,21 @@ function useStoreValue() {
       setServer((s) => ({ ...s, notifications: s.notifications.map((n) => ({ ...n, read: true })) }));
     },
 
+    /** Learner or tutor writes to La Porte Support (the admins' shared inbox). Returns the thread id. */
+    async contactSupport(body: string) {
+      if (findContactDetails(body).length) throw new ApiError(422, 'contact_details_blocked', CONTACT_BLOCK_MESSAGE.en);
+      const existing = serverRef.current.threads.find((t) => t.participantIds.includes(userId) && t.participantIds.includes(DEMO_ADMIN_ID));
+      if (existing) {
+        actions.sendMessage(existing.id, body);
+        return existing.id;
+      }
+      const fromServer = await api.supportThread(userId, body);
+      const msg = { id: `m-${Date.now()}`, from: userId, body, at: new Date().toISOString() };
+      const thread = fromServer ?? { id: `thr-${Date.now().toString(36)}`, participantIds: [userId, DEMO_ADMIN_ID], subject: 'Support', messages: [msg] };
+      setServer((s) => ({ ...s, threads: s.threads.some((t) => t.id === thread.id) ? s.threads.map((t) => (t.id === thread.id ? thread : t)) : [thread, ...s.threads] }));
+      return thread.id;
+    },
+
     /** Tutor or admin writes to a learner: continues their conversation, or starts one. Returns the thread id. */
     async staffMessage(otherId: string, subject: string, body: string) {
       if (findContactDetails(body).length) throw new ApiError(422, 'contact_details_blocked', CONTACT_BLOCK_MESSAGE.en);

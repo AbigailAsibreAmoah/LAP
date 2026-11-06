@@ -114,6 +114,7 @@ export function App() {
                   <Route path="groups" element={<GroupsPage />} />
                   <Route path="games" element={<KidsGamesHostPage />} />
                   <Route path="cafe" element={<CafePage />} />
+                  <Route path="messages" element={<MessagesPage />} />
                   <Route path=":section" element={<AdminPage />} />
                 </Route>
                 {/* Child mode sits outside the app layout: no sidebar, classmates, messages or calls. */}

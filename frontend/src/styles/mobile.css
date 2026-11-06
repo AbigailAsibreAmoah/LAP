@@ -127,3 +127,11 @@
 @keyframes menu-in { from { transform: translateX(-100%); } }
 @keyframes scrim-in { from { opacity: 0; } }
 @media (prefers-reduced-motion: reduce) { .app-shell[data-menu] .sidebar, .menu-scrim { animation: none; } }
+
+/* Learner dashboard on phones: the student, arch and leaderboard badge sit under the buttons,
+   standing on the bottom edge of the card (on wider screens they sit to the right). */
+@media (max-width: 680px) {
+  .dash-hero-art { display: block !important; position: relative; right: auto; bottom: auto; width: 100%; height: 238px; margin: 22px 0 -24px; }
+  .hero-arch { width: 176px; height: 188px; margin-left: -88px; }
+  .hero-student-float { width: 262px; margin-left: -131px; bottom: -62px; }
+}

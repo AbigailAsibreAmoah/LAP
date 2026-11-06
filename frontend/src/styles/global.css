@@ -5607,3 +5607,8 @@ button.person {
 }
 .receipt-meta { grid-template-columns: 1.25fr 1fr 1.25fr; }
 .receipt-meta > div:first-child dd { white-space: nowrap; overflow-wrap: normal; font-size: 0.85rem; }
+/* Admin: labelled filter selects and sortable column headers */
+.admin-select { display: inline-flex; align-items: center; gap: 8px; font-size: 0.82rem; font-weight: 600; color: var(--muted, #8a8f9c); }
+.admin-select .select { min-height: 40px; width: auto; padding: 6px 12px; }
+.th-sort { padding: 0; border: 0; background: none; font: inherit; color: inherit; letter-spacing: inherit; text-transform: inherit; cursor: pointer; }
+.th-sort:hover { color: var(--navy, #141b34); }

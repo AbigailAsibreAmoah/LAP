@@ -1,4 +1,4 @@
-import { COURSES, leaderboard, LEARNER_WEEKLY_MINUTES, levelFor, missedSessions, phraseOfDay, sessionCost, SPEAKING_SCENARIOS, TUTORS, type CefrLevel, type LessonKind, type QuestId, dueToday, reviewStreak, canStudy } from '@laporte/shared';
+import { COURSES, leaderboard, LEARNER_WEEKLY_MINUTES, levelFor, missedSessions, sessionCost, SPEAKING_SCENARIOS, TUTORS, type CefrLevel, type LessonKind, type QuestId, dueToday, reviewStreak, canStudy } from '@laporte/shared';
 import { AnimatePresence, motion } from 'motion/react';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
@@ -10,7 +10,7 @@ import { BarChart } from '../../components/charts/Charts';
 import { DemoTag, Hint } from '../../components/ui/Controls';
 import { Icon, type IconName } from '../../components/ui/Icon';
 import { useToast } from '../../components/ui/Toasts';
-import { speakFrench } from '../../utils/speech';
+import { DailyNoteCard } from '../../features/expressions/DailyNote';
 import { HeroBuddy } from '../../features/showcase/HeroBuddy';
 import { useI18n } from '../../i18n/I18nProvider';
 import { useStore, type AppStore } from '../../state/AppStore';
@@ -155,7 +155,6 @@ export function DashboardPage() {
   const plan = buildPlan(store, lang, t);
 
   const toast = useToast();
-  const phrase = phraseOfDay(nowIso().slice(0, 10));
   const level = levelFor(store.points);
   const weekTotal = LEARNER_WEEKLY_MINUTES.reduce((n, d) => n + d.value, 0);
   const best = LEARNER_WEEKLY_MINUTES.reduce((a, b) => (b.value > a.value ? b : a));
@@ -353,19 +352,8 @@ export function DashboardPage() {
       </motion.div>
 
       <motion.div className="dash-side" variants={stagger(0.06)}>
-        {/* Phrase of the day: one small daily dose of French */}
-        <motion.section variants={fadeUp} className="card phrase-card" aria-label={fr ? 'Expression du jour' : 'Phrase of the day'}>
-          <span className="tone-icon" data-tone="gold"><Icon name="words" size={18} /></span>
-          <div style={{ minWidth: 0, flex: 1 }}>
-            <span className="tiny muted" lang="fr">Expression du jour</span>
-            <strong lang="fr">{phrase.fr}</strong>
-            <span className="tiny muted">{phrase.en} · {l(phrase.context)}</span>
-          </div>
-          <div className="row" style={{ ['--gap' as string]: '4px', flexWrap: 'nowrap' }}>
-            <button type="button" className="icon-btn" style={{ width: 34, height: 34 }} onClick={() => speakFrench(phrase.fr, () => undefined)} aria-label={fr ? 'Écouter' : 'Listen'}><Icon name="headphones" size={15} /></button>
-            <button type="button" className="icon-btn" style={{ width: 34, height: 34 }} disabled={store.vocabulary.some((v) => v.fr === phrase.fr)} onClick={() => { void store.actions.addVocab({ fr: phrase.fr, en: phrase.en, example: phrase.fr, source: 'Expression du jour' }); toast(fr ? 'Ajoutée à votre carnet' : 'Added to your phrasebook'); }} aria-label={fr ? 'Ajouter au carnet' : 'Save to phrasebook'}><Icon name={store.vocabulary.some((v) => v.fr === phrase.fr) ? 'check' : 'plus'} size={15} /></button>
-          </div>
-        </motion.section>
+        {/* Expression du jour: a sticky note that changes every two hours, and can be pinned to the desktop */}
+        <motion.div variants={fadeUp}><DailyNoteCard /></motion.div>
 
         {/* Week planner */}
         <motion.section variants={fadeUp} className="card" aria-labelledby="week-h">

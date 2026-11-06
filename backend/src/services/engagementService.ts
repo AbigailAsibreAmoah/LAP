@@ -43,6 +43,20 @@ export const classmateMessaging = {
   },
 };
 
+/** The support team's shared address: every admin reads and answers from the Support inbox. */
+export const SUPPORT_INBOX_ID = 'adm-support';
+
+/** Learners and tutors writing to La Porte Support (continues their existing support conversation). */
+export const supportMessaging = {
+  start(from: string, body: string) {
+    const found = findContactDetails(body);
+    if (found.length) throw new AppError(422, 'contact_details_blocked', CONTACT_BLOCK_MESSAGE.en, { found });
+    const thread = messageRepository.between(from, SUPPORT_INBOX_ID) ?? messageRepository.create({ id: nextId('thr'), participantIds: [from, SUPPORT_INBOX_ID], subject: 'Support', messages: [] });
+    messageRepository.append(thread.id, { id: nextId('msg'), from, body, at: new Date().toISOString() });
+    return thread;
+  },
+};
+
 /** Tutors and admins writing to a learner (feedback, follow-ups). Staff may only start conversations with learners. */
 export const staffMessaging = {
   start(from: string, to: string, subject: string, body: string) {

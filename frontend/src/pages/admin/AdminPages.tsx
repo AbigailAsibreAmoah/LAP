@@ -54,7 +54,7 @@ function Overview() {
   const failed = payments.filter((p) => p.status === 'failed');
   const attention = [
     // Each "Open" lands on the list already filtered to exactly these people or items.
-    { id: 'credits', icon: 'card' as const, label: t('admin.lowCredits'), people: lowCredit.map((x) => x.name), to: '/admin/learners?show=low-credits' },
+    { id: 'credits', icon: 'card' as const, label: t('admin.lowCredits'), people: lowCredit.map((x) => x.name), to: '/admin/learners?credits=low' },
     { id: 'inactive', icon: 'clock' as const, label: t('admin.inactive'), people: inactive.map((x) => x.name), to: '/admin/learners?show=inactive' },
     { id: 'tickets', icon: 'support' as const, label: t('admin.openTickets'), people: openTickets.map((tk) => `${tk.id} · ${tk.subject}`), to: '/admin/support?status=open' },
     { id: 'failed', icon: 'x' as const, label: t('admin.failedPayments'), people: failed.map((p) => `${p.reference} · ${learners.find((x) => x.id === p.learnerId)?.name ?? ''}`), to: '/admin/payments?status=failed' },
@@ -160,6 +160,15 @@ function FilterBanner({ label, onClear }: { label: string; onClear: () => void }
 }
 
 type LearnerView = 'low-credits' | 'inactive' | null;
+/** Session-credit bands for the learners filter. */
+const CREDIT_BANDS = {
+  any: { en: 'Any', fr: 'Tous', test: () => true },
+  none: { en: 'None (0)', fr: 'Aucun (0)', test: (n: number) => n === 0 },
+  low: { en: 'Low (0–1)', fr: 'Bas (0–1)', test: (n: number) => n <= 1 },
+  some: { en: '2–5', fr: '2 à 5', test: (n: number) => n >= 2 && n <= 5 },
+  many: { en: '6 or more', fr: '6 ou plus', test: (n: number) => n >= 6 },
+} as const;
+type CreditBand = keyof typeof CREDIT_BANDS;
 
 function LearnersAdmin() {
   const { t, l, lang } = useI18n();
@@ -168,6 +177,15 @@ function LearnersAdmin() {
   const toast = useToast();
   const [params, setParams] = useSearchParams();
   const view = (params.get('show') as LearnerView) ?? null;
+  // "Low credits" from the overview and the credits filter are the same thing.
+  const creditBand = ((params.get('credits') as CreditBand | null) ?? (view === 'low-credits' ? 'low' : 'any')) as CreditBand;
+  const setCreditBand = (band: CreditBand) => {
+    const next = new URLSearchParams(params);
+    if (next.get('show') === 'low-credits') next.delete('show');
+    if (band === 'any') next.delete('credits'); else next.set('credits', band);
+    setParams(next);
+  };
+  const [sortCredits, setSortCredits] = useState<'none' | 'asc' | 'desc'>('none');
   const [q, setQ] = useState('');
   const [level, setLevel] = useState('all');
   const [selId, setSelId] = useState<string | null>(null);
@@ -176,10 +194,12 @@ function LearnersAdmin() {
   const lowCredit = (x: Learner) => x.credits <= 1;
   const inactive = (x: Learner) => daysFromToday(x.lastActive) <= -5;
   const list = useMemo(
-    () => learners.filter((x) => (level === 'all' || x.level === level) && (view !== 'low-credits' || lowCredit(x)) && (view !== 'inactive' || inactive(x)) && `${x.name} ${x.city} ${x.email ?? ''}`.toLowerCase().includes(q.toLowerCase())),
-    [learners, q, level, view],
+    () => learners
+      .filter((x) => (level === 'all' || x.level === level) && CREDIT_BANDS[creditBand].test(x.credits) && (view !== 'inactive' || inactive(x)) && `${x.name} ${x.city} ${x.email ?? ''}`.toLowerCase().includes(q.toLowerCase()))
+      .sort((a, b) => (sortCredits === 'asc' ? a.credits - b.credits : sortCredits === 'desc' ? b.credits - a.credits : 0)),
+    [learners, q, level, view, creditBand, sortCredits],
   );
-  const viewLabel = view === 'low-credits' ? t('admin.lowCredits') : view === 'inactive' ? t('admin.inactive') : '';
+  const viewLabel = [creditBand !== 'any' ? `${t('dash.credits')}: ${CREDIT_BANDS[creditBand][fr ? 'fr' : 'en']}` : '', view === 'inactive' ? t('admin.inactive') : ''].filter(Boolean).join(' · ');
   const credit = (delta: number) => {
     if (!sel) return;
     const why = reason.trim() || (delta > 0 ? (fr ? 'Geste commercial' : 'Goodwill credit') : fr ? 'Correction' : 'Correction');
@@ -197,12 +217,20 @@ function LearnersAdmin() {
   return (
     <>
       <PageHead title={t('app.learners')} sub={t('admin.showing')}>
-        <button className="btn btn-secondary btn-sm" onClick={exportCsv}><Icon name="download" size={15} /> {t('admin.export')} (CSV)</button>
+        <button className="btn btn-secondary btn-sm" onClick={exportCsv}><Icon name="download" size={15} /> {t('admin.export')}</button>
       </PageHead>
-      {view && <FilterBanner label={viewLabel} onClear={() => setParams({})} />}
+      {viewLabel && <FilterBanner label={viewLabel} onClear={() => setParams({})} />}
       <div className="row between" style={{ marginBottom: 14 }}>
-        <SearchBox value={q} onChange={setQ} />
-        <div className="row" style={{ ['--gap' as string]: '6px' }}>
+        <div className="row" style={{ ['--gap' as string]: '10px', flex: '1 1 auto' }}>
+          <SearchBox value={q} onChange={setQ} />
+          <label className="admin-select">
+            <span>{t('dash.credits')}</span>
+            <select className="select" value={creditBand} onChange={(e) => setCreditBand(e.target.value as CreditBand)}>
+              {(Object.keys(CREDIT_BANDS) as CreditBand[]).map((k) => <option key={k} value={k}>{CREDIT_BANDS[k][fr ? 'fr' : 'en']}</option>)}
+            </select>
+          </label>
+        </div>
+        <div className="row" style={{ ['--gap' as string]: '6px' }} role="group" aria-label={t('courses.level')}>
           {['all', 'A1', 'A2', 'B1', 'B2', 'C1', 'C2'].map((lv) => (
             <button key={lv} className={`chip ${level === lv ? 'chip-navy' : 'chip-outline'}`} style={{ cursor: 'pointer', minHeight: 32 }} onClick={() => setLevel(lv)} aria-pressed={level === lv}>{lv === 'all' ? t('common.all') : lv}</button>
           ))}
@@ -210,7 +238,7 @@ function LearnersAdmin() {
       </div>
       <div className="table-wrap">
         <table className="table">
-          <thead><tr><th>{fr ? 'Apprenant' : 'Learner'}</th><th>{t('courses.level')}</th><th>{fr ? 'Formule' : 'Plan'}</th><th>{t('dash.credits')}</th><th>{fr ? 'Progression' : 'Progress'}</th><th>{fr ? 'Dernière activité' : 'Last active'}</th></tr></thead>
+          <thead><tr><th>{fr ? 'Apprenant' : 'Learner'}</th><th>{t('courses.level')}</th><th>{fr ? 'Formule' : 'Plan'}</th><th aria-sort={sortCredits === 'asc' ? 'ascending' : sortCredits === 'desc' ? 'descending' : 'none'}><button type="button" className="th-sort" onClick={() => setSortCredits((s) => (s === 'none' ? 'asc' : s === 'asc' ? 'desc' : 'none'))}>{t('dash.credits')} <span aria-hidden>{sortCredits === 'asc' ? '↑' : sortCredits === 'desc' ? '↓' : '↕'}</span></button></th><th>{fr ? 'Progression' : 'Progress'}</th><th>{fr ? 'Dernière activité' : 'Last active'}</th></tr></thead>
           <tbody>
             {list.map((x) => (
               <tr key={x.id} className="clickable" onClick={() => setSelId(x.id)} tabIndex={0} onKeyDown={(e) => e.key === 'Enter' && setSelId(x.id)}>
@@ -437,7 +465,7 @@ function PaymentsAdmin() {
   return (
     <>
       <PageHead title={t('app.payments')}>
-        <button className="btn btn-secondary btn-sm" onClick={exportCsv}><Icon name="download" size={15} /> {t('admin.export')} (CSV)</button>
+        <button className="btn btn-secondary btn-sm" onClick={exportCsv}><Icon name="download" size={15} /> {t('admin.export')}</button>
       </PageHead>
       <Notice>{t('checkout.noCharge')} {t('demo.pricing')}</Notice>
       <div className="grid grid-3" style={{ margin: '16px 0' }}>
@@ -635,7 +663,7 @@ function ReportsAdmin() {
       <PageHead title={t('app.reports')}>
         <div className="row" style={{ ['--gap' as string]: '8px' }}>
           <DemoTag>{t('demo.data')}</DemoTag>
-          <button className="btn btn-secondary btn-sm" onClick={exportCsv}><Icon name="download" size={15} /> {t('admin.export')} (CSV)</button>
+          <button className="btn btn-secondary btn-sm" onClick={exportCsv}><Icon name="download" size={15} /> {t('admin.export')}</button>
         </div>
       </PageHead>
       <div className="grid grid-4" style={{ marginBottom: 20 }}>

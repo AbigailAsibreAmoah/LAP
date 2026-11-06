@@ -46,3 +46,21 @@ describe('staff messages', () => {
     expect((await request(app).post('/api/staff/threads').set('x-demo-user', TUTOR).send({ participantId: 'lrn-adwoa', subject: 'Hi', body: 'Call me on 024 123 4567' })).status).toBe(422);
   });
 });
+
+describe('La Porte Support inbox', () => {
+  it('lets learners and tutors write to support, and admins reply from the shared inbox', async () => {
+    const tutor = await request(app).post('/api/support/threads').set('x-demo-user', TUTOR).send({ body: 'Bonjour, pouvez-vous déplacer mon créneau de jeudi ?' });
+    expect(tutor.status).toBe(201);
+    expect(tutor.body.participantIds).toEqual(expect.arrayContaining([TUTOR, 'adm-support']));
+    // The admin team (adm-support) can answer in that conversation.
+    const reply = await request(app).post(`/api/threads/${tutor.body.id}/messages`).set('x-demo-user', 'adm-support').send({ body: 'Bien sûr, c’est fait.' });
+    expect(reply.status).toBeLessThan(300);
+    // A learner writing again continues their existing support conversation.
+    const a = await request(app).post('/api/support/threads').send({ body: 'Merci !' });
+    const b = await request(app).post('/api/support/threads').send({ body: 'Une autre question.' });
+    expect(a.body.id).toBe(b.body.id);
+    // Admins don't open support threads with themselves, and contact details stay blocked.
+    expect((await request(app).post('/api/support/threads').set('x-demo-user', 'adm-support').send({ body: 'hi' })).status).toBe(403);
+    expect((await request(app).post('/api/support/threads').send({ body: 'WhatsApp me on 0244123456' })).status).toBe(422);
+  });
+});

@@ -7,9 +7,10 @@ import { readLocal, writeLocal } from '../../utils/storage';
 const KEY = 'laporte-messages-seen';
 const EVENT = 'laporte-messages-seen';
 
-function readSeen(): Record<string, string> {
+/** Each person on the device has their own "read" memory (switching demo roles must not mark others' messages read). */
+function readSeen(userId: string): Record<string, string> {
   try {
-    return JSON.parse(readLocal(KEY) ?? '{}') as Record<string, string>;
+    return JSON.parse(readLocal(`${KEY}:${userId}`) ?? '{}') as Record<string, string>;
   } catch {
     return {};
   }
@@ -21,25 +22,26 @@ export function isUnread(thread: MessageThread, userId: string, seen: Record<str
 }
 
 export function useUnread(threads: MessageThread[], userId: string) {
-  const [seen, setSeen] = useState(readSeen);
+  const [seen, setSeen] = useState(() => readSeen(userId));
+  useEffect(() => setSeen(readSeen(userId)), [userId]);
   useEffect(() => {
-    const sync = () => setSeen(readSeen());
+    const sync = () => setSeen(readSeen(userId));
     window.addEventListener(EVENT, sync);
     window.addEventListener('storage', sync);
     return () => {
       window.removeEventListener(EVENT, sync);
       window.removeEventListener('storage', sync);
     };
-  }, []);
+  }, [userId]);
 
   const markSeen = useCallback((thread: MessageThread | undefined) => {
     const last = thread?.messages[thread.messages.length - 1];
     if (!thread || !last) return;
-    const current = readSeen();
+    const current = readSeen(userId);
     if ((current[thread.id] ?? '') >= last.at) return;
-    writeLocal(KEY, JSON.stringify({ ...current, [thread.id]: last.at }));
+    writeLocal(`${KEY}:${userId}`, JSON.stringify({ ...current, [thread.id]: last.at }));
     window.dispatchEvent(new Event(EVENT));
-  }, []);
+  }, [userId]);
 
   const mine = threads.filter((t) => t.participantIds.includes(userId));
   return {

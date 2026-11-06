@@ -13,7 +13,7 @@ import {
 import { asyncHandler, requireRole, validateBody, validateQuery } from '../middleware';
 import { contentController, upload } from '../controllers/contentController';
 import { communityService, contentService } from '../services/contentService';
-import { classmateMessaging, staffMessaging } from '../services/engagementService';
+import { classmateMessaging, staffMessaging, supportMessaging } from '../services/engagementService';
 import { kidsService, liveGameService } from '../services/kidsService';
 import { placementService } from '../services/placementService';
 import { authService } from '../services/authService';
@@ -177,4 +177,5 @@ api.post('/me/vocabulary/:id/review', requireRole('learner'), validateBody(revie
 api.post('/reports', validateBody(reportSchema), (req, res) => res.status(201).json(contentService.reportMessage(req.demoUser, req.body)));
 api.post('/admin/reports/:id/resolve', requireRole('admin'), validateBody(resolveReportSchema), (req, res) => res.json(contentService.resolveReport(req.demoUser, req.params.id, req.body.outcome)));
 api.post('/threads', requireRole('learner'), validateBody(startThreadSchema), (req, res) => res.status(201).json(classmateMessaging.start(req.demoUser.id, req.body.participantId, req.body.body)));
+api.post('/support/threads', requireRole('learner', 'instructor'), validateBody(postMessageSchema), (req, res) => res.status(201).json(supportMessaging.start(req.demoUser.id, req.body.body)));
 api.post('/staff/threads', requireRole('instructor', 'admin'), validateBody(staffThreadSchema), (req, res) => res.status(201).json(staffMessaging.start(req.demoUser.id, req.body.participantId, req.body.subject, req.body.body)));

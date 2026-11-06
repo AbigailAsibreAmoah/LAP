@@ -11,7 +11,7 @@ import { useToast } from '../../components/ui/Toasts';
 import { CallScreen, type CallKind } from '../../features/community/ClassmateChat';
 import { useUnread } from '../../features/messages/unread';
 import { useI18n } from '../../i18n/I18nProvider';
-import { useStore } from '../../state/AppStore';
+import { DEMO_ADMIN_ID, useStore } from '../../state/AppStore';
 import { formatDate, formatTime } from '../../utils/format';
 import { PageHead } from '../learner/LearnerPages';
 
@@ -28,6 +28,15 @@ export function MessagesPage() {
   const { threads, userId, actions, content } = useStore();
   const mine = threads.filter((th) => th.participantIds.includes(userId));
   const toast = useToast();
+  const isInbox = userId === DEMO_ADMIN_ID; // admins read the shared La Porte Support inbox
+  // Inbox: conversations the team has dealt with (kept on this device in the demo).
+  // A conversation counts as resolved until someone writes in it again.
+  const [resolvedAt, setResolvedAt] = useState<Record<string, string>>(() => { try { return JSON.parse(localStorage.getItem('laporte-inbox-resolved') ?? '{}'); } catch { return {}; } });
+  const isResolved = (th: MessageThread) => !!resolvedAt[th.id] && (th.messages[th.messages.length - 1]?.at ?? '') <= resolvedAt[th.id];
+  const toggleResolved = (th: MessageThread) => setResolvedAt((r) => { const next = { ...r }; if (isResolved(th)) delete next[th.id]; else next[th.id] = new Date().toISOString(); try { localStorage.setItem('laporte-inbox-resolved', JSON.stringify(next)); } catch { /* blocked */ } return next; });
+  // Learners and tutors who haven't written to support yet see it as a contact.
+  const hasSupport = mine.some((th) => th.participantIds.includes(DEMO_ADMIN_ID));
+  const [newSupport, setNewSupport] = useState(false);
   const [params, setParams] = useSearchParams();
   const withId = params.get('with');
   const threadWith = (id: string) => mine.find((th) => th.participantIds.length === 2 && th.participantIds.includes(id));
@@ -62,7 +71,7 @@ export function MessagesPage() {
   // List order: tutors, then classmates (with or without a conversation yet), then support. Newest first within each.
   const rank = (th: MessageThread) => { const o = otherOf(th); return o.startsWith('tut-') ? 0 : o.startsWith('lrn-') ? 1 : 2; };
   const lastAt = (th: MessageThread) => th.messages[th.messages.length - 1]?.at ?? '';
-  const ordered = [...mine].sort((a, b) => rank(a) - rank(b) || lastAt(b).localeCompare(lastAt(a)));
+  const ordered = [...mine].sort((a, b) => (isInbox ? Number(isResolved(a)) - Number(isResolved(b)) : 0) || rank(a) - rank(b) || lastAt(b).localeCompare(lastAt(a)));
   // Row label: who the person is — Tutor, Classmate or Support.
   const labelOf = (th: MessageThread) => {
     const o = otherOf(th);
@@ -76,10 +85,13 @@ export function MessagesPage() {
   const newMate = newWith ? LEARNERS.find((x) => x.id === newWith) : undefined;
   const active = newMate
     ? { id: 'new', participantIds: [userId, newMate.id], subject: 'Classmate', messages: [] as MessageThread['messages'] }
-    : found;
+    : newSupport
+      ? { id: 'new', participantIds: [userId, DEMO_ADMIN_ID], subject: 'Support', messages: [] as MessageThread['messages'] }
+      : found;
   const select = (id: string) => {
     setActiveId(id);
     setNewWith(null);
+    setNewSupport(false);
     setOpenOnPhone(true);
     if (withId) setParams({}, { replace: true });
   };
@@ -97,8 +109,8 @@ export function MessagesPage() {
 
   return (
     <>
-      <PageHead title={t('msg.title')} sub={t('msg.sub')} />
-      {!mine.length && !freshMates.length ? (
+      <PageHead title={isInbox ? t('app.supportInbox') : t('msg.title')} sub={isInbox ? (lang === 'fr' ? 'Messages envoyés à La Porte Support par les apprenants et les tuteurs. Toute l’équipe d’administration y répond.' : 'Messages sent to La Porte Support by learners and tutors. Any admin on the team can answer.') : t('msg.sub')} />
+      {!mine.length && !freshMates.length && isInbox ? (
         <div className="card"><EmptyState icon="message" title={lang === 'fr' ? 'Aucune conversation' : 'No conversations yet'} /></div>
       ) : (
         <div className="messages-grid card" data-open={openOnPhone || undefined} style={{ ['--pad' as string]: '0', overflow: 'hidden' }}>
@@ -114,7 +126,7 @@ export function MessagesPage() {
                       <strong style={{ fontSize: 14 }}>{other.name}{unread.unread(th) && <span className="unread-dot" aria-label={lang === 'fr' ? 'non lu' : 'unread'} />}</strong>
                       <span className="tiny muted">{formatDate(last.at, lang, { day: 'numeric', month: 'short' })}</span>
                     </span>
-                    <span className="tiny" style={{ display: 'block', fontWeight: 600, color: 'var(--ink-2)' }}>{labelOf(th)}</span>
+                    <span className="tiny" style={{ display: 'block', fontWeight: 600, color: 'var(--ink-2)' }}>{labelOf(th)}{isInbox && isResolved(th) && <span className="chip" style={{ minHeight: 18, marginLeft: 6, padding: '0 6px' }}>✓ {lang === 'fr' ? 'Résolu' : 'Resolved'}</span>}</span>
                     <span className="tiny muted" style={{ display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{last.body}</span>
                   </span>
                 </button></li>
@@ -130,6 +142,16 @@ export function MessagesPage() {
                 </span>
               </button></li>
             ))}
+            {!isInbox && !hasSupport && (
+              <li><button onClick={() => { setNewSupport(true); setNewWith(null); setDraft(''); setOpenOnPhone(true); }} className="row" style={{ width: '100%', flexWrap: 'nowrap', padding: '14px 16px', border: 0, borderBottom: '1px solid var(--line)', cursor: 'pointer', textAlign: 'left', background: newSupport ? 'var(--ivory)' : '#fff' }} aria-current={newSupport}>
+                <span className="avatar" style={{ ['--size' as string]: '38px', display: 'grid', placeItems: 'center', background: 'var(--navy)', color: '#E7C78F', fontSize: 12, fontWeight: 700 }}>LP</span>
+                <span style={{ minWidth: 0, flex: 1 }}>
+                  <strong style={{ fontSize: 14, display: 'block' }}>La Porte Support</strong>
+                  <span className="tiny" style={{ display: 'block', fontWeight: 600, color: 'var(--ink-2)' }}>{lang === 'fr' ? 'Assistance' : 'Support'}</span>
+                  <span className="tiny muted" style={{ display: 'block' }}>{lang === 'fr' ? 'Une question ? Écrivez à l’équipe' : 'A question? Write to the team'}</span>
+                </span>
+              </button></li>
+            )}
             {ordered.filter((th) => rank(th) === 2).map((th) => {
               const other = person(th.participantIds.find((p) => p !== userId)!);
               const last = th.messages[th.messages.length - 1];
@@ -163,6 +185,11 @@ export function MessagesPage() {
                         <h2 className="h4" style={{ fontSize: 15 }}>{subjectOf(active.subject)}</h2>
                         <div className="tiny muted">{other.name} · {role}</div>
                       </div>
+                      {isInbox && active.id !== 'new' && (
+                        <button type="button" className={`btn btn-sm ${isResolved(active) ? 'btn-ghost' : 'btn-secondary'}`} onClick={() => { toggleResolved(active); toast(isResolved(active) ? (lang === 'fr' ? 'Conversation rouverte' : 'Conversation reopened') : lang === 'fr' ? 'Marquée comme résolue' : 'Marked as resolved'); }}>
+                          <Icon name={isResolved(active) ? 'replay' : 'check'} size={14} /> {isResolved(active) ? (lang === 'fr' ? 'Rouvrir' : 'Reopen') : lang === 'fr' ? 'Résolu' : 'Resolve'}
+                        </button>
+                      )}
                       {callMate && (
                         <div className="row" style={{ ['--gap' as string]: '6px', flexWrap: 'nowrap' }}>
                           <button type="button" className="btn btn-secondary btn-sm" onClick={() => setCall('voice')} aria-label={lang === 'fr' ? 'Appel vocal' : 'Voice call'} title={lang === 'fr' ? 'Appel vocal' : 'Voice call'}><Icon name="phone" size={16} /></button>
@@ -174,6 +201,7 @@ export function MessagesPage() {
                 })()}
               </div>
               <div role="log" aria-live="polite" aria-label={active.subject} tabIndex={0} style={{ flex: 1, overflowY: 'auto', padding: 20, display: 'flex', flexDirection: 'column', gap: 12 }}>
+                {newSupport && <p className="small muted" style={{ textAlign: 'center', margin: 'auto 0' }}>{lang === 'fr' ? 'Écrivez votre question : l’équipe La Porte vous répond ici, en général sous un jour ouvré.' : 'Write your question: the La Porte team replies here, usually within one working day.'}</p>}
                 {newMate && <p className="small muted" style={{ textAlign: 'center', margin: 'auto 0' }}>{lang === 'fr' ? `Dites bonjour à ${newMate.firstName}, en français si possible !` : `Say hello to ${newMate.firstName}, in French if you can!`}</p>}
                 <AnimatePresence initial={false}>
                   {active.messages.map((m) => {
@@ -210,7 +238,17 @@ export function MessagesPage() {
                         setDraft(body);
                         toast(err instanceof Error ? err.message : String(err));
                       });
-                  } else actions.sendMessage(active.id, body);
+                  } else if (newSupport) {
+                    actions
+                      .contactSupport(body)
+                      .then((id) => select(id))
+                      .catch((err: unknown) => {
+                        setDraft(body);
+                        toast(err instanceof Error ? err.message : String(err));
+                      });
+                  } else {
+                    actions.sendMessage(active.id, body);
+                  }
                 }}
               >
                 <div style={{ display: 'flex', gap: 10 }}>

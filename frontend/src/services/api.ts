@@ -189,6 +189,12 @@ export const api = {
     return demoAdapter.cancelBooking(ctx.learner!, ctx.bookings.find((b) => b.id === id)!, input);
   },
 
+  /** Learner or tutor writes to La Porte Support. Offline: null (the store keeps it locally). */
+  async supportThread(userId: string, body: string): Promise<MessageThread | null> {
+    if (!(await detectApi())) return null;
+    return request<MessageThread>('/support/threads', { method: 'POST', body: { body }, userId });
+  },
+
   /** Tutor/admin starts (or continues) a conversation with a learner. Offline: null (the store keeps it locally). */
   async staffThread(userId: string, participantId: string, subject: string, body: string): Promise<MessageThread | null> {
     if (!(await detectApi())) return null;
