@@ -20,6 +20,7 @@ export const presenceChangeSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('out-of-office'), from: z.string().datetime(), until: z.string().datetime(), reason: oooReason }),
   z.object({ kind: z.literal('cancel-time-off'), id: z.string().min(1).max(60) }),
 ]);
+export const typingSchema = z.object({ typing: z.boolean() });
 export const heartbeatSchema = z.object({ active: z.boolean() });
 
 export const rescheduleBookingSchema = z.object({ start: isoStart });

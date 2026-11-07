@@ -31,4 +31,9 @@ export let store = seed();
 
 export function resetDemoStore() {
   store = seed();
+  typingReset?.();
 }
+
+/** Set by the typing service so a demo reset also clears typing signals (avoids an import cycle). */
+let typingReset: (() => void) | undefined;
+export const onDemoReset = (fn: () => void) => { typingReset = fn; };

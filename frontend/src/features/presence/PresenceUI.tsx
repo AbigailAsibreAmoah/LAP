@@ -43,6 +43,7 @@ export function presenceHint(p: ResolvedPresence | undefined, lang: Lang) {
 export function PresenceDot({ tutorId, className = '' }: { tutorId: string; className?: string }) {
   const { lang } = useI18n();
   const p = usePresence(tutorId);
+  if (!p) return null; // not loaded yet: show nothing rather than a wrong 'Offline'
   const label = presenceText(p, lang);
   return <span className={`pz-dot ${className}`} data-status={p?.status ?? 'offline'} data-session={p?.inSession || undefined} role="img" aria-label={label} title={label} />;
 }
@@ -61,6 +62,7 @@ export function TutorAvatar({ tutorId, spec, size = 40, expression }: { tutorId:
 export function PresenceBadge({ tutorId, short }: { tutorId: string; short?: boolean }) {
   const { lang } = useI18n();
   const p = usePresence(tutorId);
+  if (!p) return null;
   return (
     <span className="pz-badge" data-status={p?.status ?? 'offline'}>
       <span className="pz-dot pz-dot-inline" data-status={p?.status ?? 'offline'} data-session={p?.inSession || undefined} aria-hidden />

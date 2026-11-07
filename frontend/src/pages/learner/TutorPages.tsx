@@ -2,7 +2,8 @@ import { COURSES, LEVEL_ORDER, TUTORS, TUTOR_PROFILES, type CefrLevel, type Prof
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { motion } from 'motion/react';
 import { Link, useParams } from 'react-router-dom';
-import { Avatar } from '../../components/3d/Portrait';
+import { PresenceBadge, presenceHint, TutorAvatar } from '../../features/presence/PresenceUI';
+import { usePresence } from '../../features/presence/presenceClient';
 import { EmptyState } from '../../components/ui/Controls';
 import { Icon } from '../../components/ui/Icon';
 import { useI18n } from '../../i18n/I18nProvider';
@@ -71,8 +72,9 @@ export function TutorsDirectoryPage() {
             return (
               <Link key={t.id} to={`/app/tutors/${t.id}`} className="tp-card" aria-label={`${t.name} — ${fr ? 'voir le profil' : 'view profile'}`}>
                 <div className="tp-card-cover" aria-hidden />
-                <Avatar spec={t.portrait} size={76} />
+                <TutorAvatar tutorId={t.id} spec={t.portrait} size={76} />
                 <h2 className="tp-card-name">{t.name}</h2>
+                <PresenceBadge tutorId={t.id} short />
                 <p className="tp-card-headline">{p ? l(p.headline) : l(t.title)}</p>
                 <p className="tiny muted">{p?.location ?? ''} · {t.levels}</p>
                 <p className="tp-card-rating"><Stars value={t.rating} /> {t.rating} <span className="muted">({t.reviews})</span></p>
@@ -145,6 +147,7 @@ export function TutorProfilePage() {
   const fr = lang === 'fr';
   const { learner, threads, userId } = useStore();
   const t = TUTORS.find((x) => x.id === id);
+  const presence = usePresence(t?.id);
   const hasCourses = !!t && COURSES.some((c) => c.tutorId === t.id);
   const sections = SECTIONS.filter((s) => s.id !== 'courses' || hasCourses);
   const [active, select] = useActiveSection(sections.map((s) => s.id), !!t);
@@ -183,12 +186,13 @@ export function TutorProfilePage() {
       <header className="tp-hero">
         <div className="tp-hero-cover" aria-hidden><span /><span /><span /></div>
         <div className="tp-hero-body">
-          <span className="tp-hero-avatar"><Avatar spec={t.portrait} size={136} expression="joy" /></span>
+          <span className="tp-hero-avatar"><TutorAvatar tutorId={t.id} spec={t.portrait} size={136} expression="joy" /></span>
           <div className="tp-hero-text">
             <div className="tp-hero-name-row">
               <h1 className="tp-hero-name">{t.name}</h1>
               <span className="tp-verified" title={fr ? 'Tuteur certifié La Porte' : 'Certified La Porte tutor'}><Icon name="check" size={12} stroke={3} /> {fr ? 'Tuteur La Porte' : 'La Porte tutor'}</span>
             </div>
+            <div className="pz-line" style={{ marginTop: 2 }}><PresenceBadge tutorId={t.id} /><span className="pz-hint">{presenceHint(presence, lang)}</span></div>
             <p className="tp-hero-headline">{p ? l(p.headline) : l(t.title)}</p>
             <div className="tp-hero-chips">
               {p && <span><Icon name="globe" size={14} /> {p.location}</span>}
@@ -329,7 +333,7 @@ export function TutorProfilePage() {
               {others.map((o) => (
                 <li key={o.id}>
                   <Link to={`/app/tutors/${o.id}`} className="tp-other">
-                    <Avatar spec={o.portrait} size={44} />
+                    <TutorAvatar tutorId={o.id} spec={o.portrait} size={44} />
                     <span style={{ minWidth: 0 }}><strong>{o.name}</strong><span className="tiny muted">{o.specialities.slice(0, 2).join(' · ')} · ★ {o.rating}</span></span>
                   </Link>
                 </li>

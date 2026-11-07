@@ -1,3 +1,4 @@
+import { typingService } from './typingService';
 import { ADMIN_METRICS, CONTACT_BLOCK_MESSAGE, DEMO_TODAY, canContact, findContactDetails, type AppNotification, ownedBy } from '@laporte/shared';
 import { bookingRepository } from '../repositories/bookingRepository';
 import { catalogRepository } from '../repositories/catalogRepository';
@@ -26,6 +27,7 @@ export const messagingService = {
     // Contact details may not be exchanged through the portal (brief C1).
     const found = findContactDetails(body);
     if (found.length) throw new AppError(422, 'contact_details_blocked', CONTACT_BLOCK_MESSAGE.en, { found });
+    typingService.clear(threadId, from); // the message has arrived: the dots go away
     return messageRepository.append(threadId, { id: nextId('msg'), from, body, at: new Date().toISOString() });
   },
 };

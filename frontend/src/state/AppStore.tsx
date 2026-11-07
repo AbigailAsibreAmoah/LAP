@@ -385,6 +385,23 @@ function useStoreValue() {
       void api.postMessage(userId, threadId, body).catch(() => undefined);
     },
 
+    /** Live chat: takes the server's copy of this user's conversations (new replies appear on
+     *  their own). A message just sent here and not yet on the server is kept, so it never flickers. */
+    syncThreads(fresh: MessageThread[]) {
+      const recent = Date.now() - 15_000;
+      setServer((s) => {
+        const byId = new Map(fresh.map((t) => [t.id, t]));
+        const merged = s.threads.map((t) => {
+          const f = byId.get(t.id);
+          if (!f) return t; // only known here (offline-created): keep
+          const pending = t.messages.filter((m) => m.id.startsWith('m-') && Date.parse(m.at) > recent && !f.messages.some((x) => x.from === m.from && x.body === m.body));
+          return pending.length ? { ...f, messages: [...f.messages, ...pending] } : f;
+        });
+        const added = fresh.filter((f) => !s.threads.some((t) => t.id === f.id));
+        return { ...s, threads: [...added, ...merged] };
+      });
+    },
+
     addNote: (learnerId: string, text: string) =>
       setLocal((l) => ({ ...l, notes: { ...l.notes, [learnerId]: [{ text, at: new Date().toISOString() }, ...(l.notes[learnerId] ?? [])] } })),
 

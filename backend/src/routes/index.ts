@@ -19,6 +19,8 @@ import { placementService } from '../services/placementService';
 import { authService } from '../services/authService';
 import { runCafe } from '../services/cafeService';
 import { presenceService } from '../services/presenceService';
+import { typingService } from '../services/typingService';
+import { messageRepository } from '../repositories/engagementRepository';
 import {
   addVocabularySchema,
   assignPackSchema,
@@ -34,6 +36,7 @@ import {
   availabilityQuerySchema,
   presenceChangeSchema,
   heartbeatSchema,
+  typingSchema,
   cancelBookingSchema,
   claimQuestSchema,
   completeLessonSchema,
@@ -123,6 +126,9 @@ api.post('/speaking/scenarios/:id/sample-feedback', asyncHandler(speakingControl
 api.get('/notifications', engagementController.notifications);
 api.post('/notifications/:id/read', engagementController.markRead);
 api.get('/threads', engagementController.threads);
+// Live chat: this user's conversations plus who is typing in each (polled while Messages is open).
+api.get('/threads/live', (req, res) => res.json({ threads: messageRepository.threadsFor(req.demoUser.id), typing: typingService.forUser(req.demoUser.id) }));
+api.post('/threads/:id/typing', validateBody(typingSchema), (req, res) => res.json(typingService.set(req.params.id, req.demoUser.id, req.body.typing)));
 api.post('/threads/:id/messages', validateBody(postMessageSchema), engagementController.post);
 
 // Administration

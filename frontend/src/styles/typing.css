@@ -1,0 +1,17 @@
+/* ======================= "…is typing" in Messages ======================= */
+.typing-row { display: flex; align-items: center; gap: 8px; align-self: flex-start; }
+/* same shape and colour as a received message bubble */
+.typing-bubble { display: inline-flex; align-items: center; gap: 5px; height: 38px; padding: 0 16px; border-radius: 16px; border-bottom-left-radius: 4px; background: var(--ivory); }
+.typing-bubble i { width: 8px; height: 8px; border-radius: 50%; background: #a99a88; animation: typing-float 1.25s ease-in-out infinite; }
+.typing-bubble i:nth-child(2) { animation-delay: 0.16s; }
+.typing-bubble i:nth-child(3) { animation-delay: 0.32s; }
+@keyframes typing-float {
+  0%, 60%, 100% { transform: translateY(0); opacity: 0.45; }
+  30% { transform: translateY(-6px); opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .typing-bubble i { animation-name: typing-fade; }
+  @keyframes typing-fade { 0%, 100% { opacity: 0.35; } 50% { opacity: 1; } }
+}
+/* conversation list: "typing…" in place of the last message */
+.typing-preview { color: #1f9e5a; font-style: italic; font-weight: 600; }

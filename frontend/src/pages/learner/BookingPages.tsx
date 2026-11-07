@@ -3,6 +3,8 @@ import { AnimatePresence, motion } from 'motion/react';
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Avatar } from '../../components/3d/Portrait';
+import { PresenceBadge, presenceHint, TutorAvatar } from '../../features/presence/PresenceUI';
+import { usePresence } from '../../features/presence/presenceClient';
 import { Token } from '../../components/3d/Depth';
 import { ease, spring } from '../../components/animations/motion';
 import { DemoTag, EmptyState, FocusTitle, Notice, StatusBadge, Tabs } from '../../components/ui/Controls';
@@ -118,7 +120,7 @@ function SlotPicker({ tutor, date, value, onChange }: { tutor: Tutor; date: stri
           disabled={!s.available}
           onClick={() => onChange(s.start)}
           aria-pressed={value === s.start}
-          aria-label={`${formatTime(s.start, lang)} — ${s.available ? '60 min' : s.reason === 'calendar' ? (lang === 'fr' ? 'tuteur indisponible' : 'tutor unavailable') : lang === 'fr' ? 'réservé' : 'booked'}`}
+          aria-label={`${formatTime(s.start, lang)} — ${s.available ? '60 min' : (s.reason as string) === 'out-of-office' ? (lang === 'fr' ? 'tuteur absent' : 'tutor out of office') : s.reason === 'calendar' ? (lang === 'fr' ? 'tuteur indisponible' : 'tutor unavailable') : lang === 'fr' ? 'réservé' : 'booked'}`}
           className="btn"
           style={{
             justifyContent: 'space-between',
@@ -130,7 +132,7 @@ function SlotPicker({ tutor, date, value, onChange }: { tutor: Tutor; date: stri
           }}
         >
           <span className="num">{formatTime(s.start, lang)}</span>
-          <span className="tiny">{s.available ? '60 min' : s.reason === 'calendar' ? (lang === 'fr' ? 'Indisponible' : 'Unavailable') : lang === 'fr' ? 'Réservé' : 'Booked'}</span>
+          <span className="tiny">{s.available ? '60 min' : (s.reason as string) === 'out-of-office' ? (lang === 'fr' ? 'Absent·e' : 'Out of office') : s.reason === 'calendar' ? (lang === 'fr' ? 'Indisponible' : 'Unavailable') : lang === 'fr' ? 'Réservé' : 'Booked'}</span>
         </motion.button>
       ))}
     </div>
@@ -157,7 +159,10 @@ export function BookPage() {
 
   const hours = availability[tutor.id] ?? tutor.availability;
   const stage = !date ? 1 : !start ? 2 : 3;
-  const hasSlots = (d: string) => (hours[((new Date(`${d}T00:00:00Z`).getUTCDay() + 6) % 7) + 1] ?? []).length > 0;
+  // Days during the tutor's current time off are closed (the server refuses them too).
+  const presence = usePresence(tutor.id);
+  const awayUntil = presence?.status === 'out-of-office' && presence.until ? presence.until.slice(0, 10) : null;
+  const hasSlots = (d: string) => (!awayUntil || d >= awayUntil) && (hours[((new Date(`${d}T00:00:00Z`).getUTCDay() + 6) % 7) + 1] ?? []).length > 0;
 
   const confirm = async () => {
     if (!start) return;
@@ -261,7 +266,7 @@ export function BookPage() {
             className="card row"
             style={{ ['--pad' as string]: '10px 16px 10px 10px', cursor: 'pointer', flex: 'none', flexWrap: 'nowrap', borderColor: tutor.id === tu.id ? 'var(--burgundy)' : undefined, boxShadow: tutor.id === tu.id ? '0 0 0 1px var(--burgundy), var(--shadow-2)' : undefined }}
           >
-            <Avatar spec={tu.portrait} size={40} />
+            <TutorAvatar tutorId={tu.id} spec={tu.portrait} size={40} />
             <span style={{ textAlign: 'left' }}>
               <span style={{ display: 'block', fontWeight: 700, fontSize: 14 }}>{tu.name}</span>
               <span className="tiny muted">{tu.specialities.slice(0, 2).join(' · ')}</span>
@@ -287,9 +292,10 @@ export function BookPage() {
         {/* tutor profile */}
         <motion.div key={tutor.id} className="card stack" style={{ ['--gap' as string]: '12px' }} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, ease: ease.out }}>
           <div className="row" style={{ flexWrap: 'nowrap' }}>
-            <Avatar spec={tutor.portrait} size={64} expression="smile" />
+            <TutorAvatar tutorId={tutor.id} spec={tutor.portrait} size={64} expression="smile" />
             <div>
               <h2 className="h3" style={{ fontSize: '1.2rem' }}>{tutor.name}</h2>
+              <TutorStatusLine tutorId={tutor.id} />
               <div className="tiny muted">{l(tutor.title)}</div>
               <div className="row tiny" style={{ ['--gap' as string]: '4px', marginTop: 4 }}>
                 <span style={{ color: 'var(--gold-600)' }}><Icon name="star" size={13} /></span> {tutor.rating} ({tutor.reviews}) <DemoTag />
@@ -548,5 +554,17 @@ export function MyLessonsPage() {
         )}
       </Modal>
     </>
+  );
+}
+
+/** The selected tutor's status, and what it means for booking. */
+function TutorStatusLine({ tutorId }: { tutorId: string }) {
+  const { lang } = useI18n();
+  const p = usePresence(tutorId);
+  return (
+    <div className="pz-line" style={{ marginTop: 4 }}>
+      <PresenceBadge tutorId={tutorId} />
+      <span className="pz-hint">{p?.status === 'out-of-office' ? (lang === 'fr' ? 'Ses créneaux sont fermés pendant son absence.' : 'Their slots are closed while they’re away.') : presenceHint(p, lang)}</span>
+    </div>
   );
 }

@@ -3,6 +3,7 @@ import { AnimatePresence, motion } from 'motion/react';
 import { useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Avatar } from '../../components/3d/Portrait';
+import { PresenceBadge, TutorAvatar } from '../../features/presence/PresenceUI';
 import { spring } from '../../components/animations/motion';
 import { EmptyState, Notice } from '../../components/ui/Controls';
 import { Icon } from '../../components/ui/Icon';
@@ -10,6 +11,7 @@ import { Modal } from '../../components/ui/Overlay';
 import { useToast } from '../../components/ui/Toasts';
 import { CallScreen, type CallKind } from '../../features/community/ClassmateChat';
 import { useUnread } from '../../features/messages/unread';
+import { useLiveChat, useTypingSignal } from '../../features/messages/liveChat';
 import { useI18n } from '../../i18n/I18nProvider';
 import { DEMO_ADMIN_ID, useStore } from '../../state/AppStore';
 import { formatDate, formatTime } from '../../utils/format';
@@ -103,9 +105,13 @@ export function MessagesPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [found?.id, found?.messages.length, newMate]);
 
+  // Live: replies arrive on their own, and "…is typing" shows while the other person writes.
+  const typingIn = useLiveChat(userId, actions.syncThreads);
+  useTypingSignal(userId, active?.id ?? null, draft);
+  const typers = active ? typingIn[active.id] ?? [] : [];
   useEffect(() => {
     endRef.current?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
-  }, [active?.messages.length]);
+  }, [active?.messages.length, typers.length]);
 
   return (
     <>
@@ -120,14 +126,14 @@ export function MessagesPage() {
               const last = th.messages[th.messages.length - 1];
               return (
                 <li key={th.id}><button onClick={() => select(th.id)} className="row" style={{ width: '100%', flexWrap: 'nowrap', padding: '14px 16px', border: 0, borderBottom: '1px solid var(--line)', cursor: 'pointer', textAlign: 'left', background: th.id === active?.id ? 'var(--ivory)' : '#fff' }} aria-current={th.id === active?.id}>
-                  {other.spec ? <Avatar spec={other.spec} size={38} /> : <span className="avatar" style={{ ['--size' as string]: '38px', display: 'grid', placeItems: 'center', background: 'var(--navy)', color: '#E7C78F', fontSize: 12, fontWeight: 700 }}>LP</span>}
+                  {other.spec ? (otherOf(th).startsWith('tut-') ? <TutorAvatar tutorId={otherOf(th)} spec={other.spec} size={38} /> : <Avatar spec={other.spec} size={38} />) : <span className="avatar" style={{ ['--size' as string]: '38px', display: 'grid', placeItems: 'center', background: 'var(--navy)', color: '#E7C78F', fontSize: 12, fontWeight: 700 }}>LP</span>}
                   <span style={{ minWidth: 0, flex: 1 }}>
                     <span className="row between" style={{ flexWrap: 'nowrap' }}>
                       <strong style={{ fontSize: 14 }}>{other.name}{unread.unread(th) && <span className="unread-dot" aria-label={lang === 'fr' ? 'non lu' : 'unread'} />}</strong>
                       <span className="tiny muted">{formatDate(last.at, lang, { day: 'numeric', month: 'short' })}</span>
                     </span>
                     <span className="tiny" style={{ display: 'block', fontWeight: 600, color: 'var(--ink-2)' }}>{labelOf(th)}{isInbox && isResolved(th) && <span className="chip" style={{ minHeight: 18, marginLeft: 6, padding: '0 6px' }}>✓ {lang === 'fr' ? 'Résolu' : 'Resolved'}</span>}</span>
-                    <span className="tiny muted" style={{ display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{last.body}</span>
+                    <span className="tiny muted" style={{ display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{typingIn[th.id]?.length ? <span className="typing-preview">{lang === 'fr' ? 'écrit…' : 'typing…'}</span> : last.body}</span>
                   </span>
                 </button></li>
               );
@@ -157,14 +163,14 @@ export function MessagesPage() {
               const last = th.messages[th.messages.length - 1];
               return (
                 <li key={th.id}><button onClick={() => select(th.id)} className="row" style={{ width: '100%', flexWrap: 'nowrap', padding: '14px 16px', border: 0, borderBottom: '1px solid var(--line)', cursor: 'pointer', textAlign: 'left', background: th.id === active?.id ? 'var(--ivory)' : '#fff' }} aria-current={th.id === active?.id}>
-                  {other.spec ? <Avatar spec={other.spec} size={38} /> : <span className="avatar" style={{ ['--size' as string]: '38px', display: 'grid', placeItems: 'center', background: 'var(--navy)', color: '#E7C78F', fontSize: 12, fontWeight: 700 }}>LP</span>}
+                  {other.spec ? (otherOf(th).startsWith('tut-') ? <TutorAvatar tutorId={otherOf(th)} spec={other.spec} size={38} /> : <Avatar spec={other.spec} size={38} />) : <span className="avatar" style={{ ['--size' as string]: '38px', display: 'grid', placeItems: 'center', background: 'var(--navy)', color: '#E7C78F', fontSize: 12, fontWeight: 700 }}>LP</span>}
                   <span style={{ minWidth: 0, flex: 1 }}>
                     <span className="row between" style={{ flexWrap: 'nowrap' }}>
                       <strong style={{ fontSize: 14 }}>{other.name}{unread.unread(th) && <span className="unread-dot" aria-label={lang === 'fr' ? 'non lu' : 'unread'} />}</strong>
                       <span className="tiny muted">{formatDate(last.at, lang, { day: 'numeric', month: 'short' })}</span>
                     </span>
                     <span className="tiny" style={{ display: 'block', fontWeight: 600, color: 'var(--ink-2)' }}>{labelOf(th)}</span>
-                    <span className="tiny muted" style={{ display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{last.body}</span>
+                    <span className="tiny muted" style={{ display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{typingIn[th.id]?.length ? <span className="typing-preview">{lang === 'fr' ? 'écrit…' : 'typing…'}</span> : last.body}</span>
                   </span>
                 </button></li>
               );
@@ -180,10 +186,10 @@ export function MessagesPage() {
                   const role = otherId.startsWith('tut-') ? (lang === 'fr' ? 'Tuteur·rice' : 'Tutor') : otherId.startsWith('lrn-') ? (lang === 'fr' ? 'Apprenant·e' : 'Learner') : lang === 'fr' ? 'Équipe d’assistance' : 'Support team';
                   return (
                     <>
-                      {other.spec ? <Avatar spec={other.spec} size={34} /> : null}
+                      {other.spec ? (otherId.startsWith('tut-') ? <TutorAvatar tutorId={otherId} spec={other.spec} size={34} /> : <Avatar spec={other.spec} size={34} />) : null}
                       <div style={{ minWidth: 0, flex: 1 }}>
                         <h2 className="h4" style={{ fontSize: 15 }}>{subjectOf(active.subject)}</h2>
-                        <div className="tiny muted">{other.name} · {role}</div>
+                        <div className="tiny muted">{other.name} · {role}{otherId.startsWith('tut-') && <> · <PresenceBadge tutorId={otherId} /></>}</div>
                       </div>
                       {isInbox && active.id !== 'new' && (
                         <button type="button" className={`btn btn-sm ${isResolved(active) ? 'btn-ghost' : 'btn-secondary'}`} onClick={() => { toggleResolved(active); toast(isResolved(active) ? (lang === 'fr' ? 'Conversation rouverte' : 'Conversation reopened') : lang === 'fr' ? 'Marquée comme résolue' : 'Marked as resolved'); }}>
@@ -220,6 +226,14 @@ export function MessagesPage() {
                       </motion.div>
                     );
                   })}
+                  {typers.length > 0 && (
+                    <motion.div key="typing" className="typing-row" initial={{ opacity: 0, y: 10, scale: 0.9 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 6, scale: 0.9 }} transition={spring.settle}>
+                      <span className="typing-bubble" role="status" aria-label={lang === 'fr' ? `${person(typers[0]).name} écrit…` : `${person(typers[0]).name} is typing…`}>
+                        <i /><i /><i />
+                      </span>
+                      <span className="tiny muted">{person(typers[0]).name.split(' ')[0]} {lang === 'fr' ? 'écrit…' : 'is typing…'}</span>
+                    </motion.div>
+                  )}
                 </AnimatePresence>
                 <div ref={endRef} />
               </div>

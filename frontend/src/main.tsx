@@ -15,6 +15,7 @@ import './styles/tutor-profile.css';
 import './styles/story.css';
 import './styles/paystack.css';
 import './styles/presence.css';
+import './styles/typing.css';
 import './styles/mobile.css';
 
 listenForStaleBuilds();
