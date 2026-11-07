@@ -385,6 +385,13 @@ function useStoreValue() {
       void api.postMessage(userId, threadId, body).catch(() => undefined);
     },
 
+    /** Demo only: a demo classmate answers in a conversation (see features/messages/demoReplies). */
+    demoReply(threadId: string, fromId: string, body: string) {
+      const message = { id: `m-${Date.now()}`, from: fromId, body, at: new Date().toISOString() };
+      setServer((s) => ({ ...s, threads: s.threads.map((t) => (t.id === threadId ? { ...t, messages: [...t.messages, message] } : t)) }));
+      void api.postMessage(fromId, threadId, body).catch(() => undefined);
+    },
+
     /** Live chat: takes the server's copy of this user's conversations (new replies appear on
      *  their own). A message just sent here and not yet on the server is kept, so it never flickers. */
     syncThreads(fresh: MessageThread[]) {

@@ -12,6 +12,7 @@ import { useToast } from '../../components/ui/Toasts';
 import { CallScreen, type CallKind } from '../../features/community/ClassmateChat';
 import { useUnread } from '../../features/messages/unread';
 import { useLiveChat, useTypingSignal } from '../../features/messages/liveChat';
+import { demoReply, isDemoClassmate, typingTime } from '../../features/messages/demoReplies';
 import { useI18n } from '../../i18n/I18nProvider';
 import { DEMO_ADMIN_ID, useStore } from '../../state/AppStore';
 import { formatDate, formatTime } from '../../utils/format';
@@ -108,7 +109,22 @@ export function MessagesPage() {
   // Live: replies arrive on their own, and "…is typing" shows while the other person writes.
   const typingIn = useLiveChat(userId, actions.syncThreads);
   useTypingSignal(userId, active?.id ?? null, draft);
-  const typers = active ? typingIn[active.id] ?? [] : [];
+  // Demo classmates answer: a short pause, the typing dots, then a reply (threadId → who is typing).
+  const [demoTyping, setDemoTyping] = useState<Record<string, string>>({});
+  const timers = useRef<number[]>([]);
+  useEffect(() => () => timers.current.forEach((id) => window.clearTimeout(id)), []);
+  const answerAsClassmate = (threadId: string, otherId: string, said: string) => {
+    if (!isDemoClassmate(otherId, userId)) return;
+    const reply = demoReply(said);
+    timers.current.push(window.setTimeout(() => {
+      setDemoTyping((d) => ({ ...d, [threadId]: otherId }));
+      timers.current.push(window.setTimeout(() => {
+        setDemoTyping((d) => { const next = { ...d }; delete next[threadId]; return next; });
+        actions.demoReply(threadId, otherId, reply);
+      }, typingTime(reply)));
+    }, 900));
+  };
+  const typers = active ? [...new Set([...(typingIn[active.id] ?? []), ...(demoTyping[active.id] ? [demoTyping[active.id]] : [])])] : [];
   useEffect(() => {
     endRef.current?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
   }, [active?.messages.length, typers.length]);
@@ -133,7 +149,7 @@ export function MessagesPage() {
                       <span className="tiny muted">{formatDate(last.at, lang, { day: 'numeric', month: 'short' })}</span>
                     </span>
                     <span className="tiny" style={{ display: 'block', fontWeight: 600, color: 'var(--ink-2)' }}>{labelOf(th)}{isInbox && isResolved(th) && <span className="chip" style={{ minHeight: 18, marginLeft: 6, padding: '0 6px' }}>✓ {lang === 'fr' ? 'Résolu' : 'Resolved'}</span>}</span>
-                    <span className="tiny muted" style={{ display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{typingIn[th.id]?.length ? <span className="typing-preview">{lang === 'fr' ? 'écrit…' : 'typing…'}</span> : last.body}</span>
+                    <span className="tiny muted" style={{ display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{typingIn[th.id]?.length || demoTyping[th.id] ? <span className="typing-preview">{lang === 'fr' ? 'écrit…' : 'typing…'}</span> : last.body}</span>
                   </span>
                 </button></li>
               );
@@ -170,7 +186,7 @@ export function MessagesPage() {
                       <span className="tiny muted">{formatDate(last.at, lang, { day: 'numeric', month: 'short' })}</span>
                     </span>
                     <span className="tiny" style={{ display: 'block', fontWeight: 600, color: 'var(--ink-2)' }}>{labelOf(th)}</span>
-                    <span className="tiny muted" style={{ display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{typingIn[th.id]?.length ? <span className="typing-preview">{lang === 'fr' ? 'écrit…' : 'typing…'}</span> : last.body}</span>
+                    <span className="tiny muted" style={{ display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{typingIn[th.id]?.length || demoTyping[th.id] ? <span className="typing-preview">{lang === 'fr' ? 'écrit…' : 'typing…'}</span> : last.body}</span>
                   </span>
                 </button></li>
               );
@@ -188,8 +204,8 @@ export function MessagesPage() {
                     <>
                       {other.spec ? (otherId.startsWith('tut-') ? <TutorAvatar tutorId={otherId} spec={other.spec} size={34} /> : <Avatar spec={other.spec} size={34} />) : null}
                       <div style={{ minWidth: 0, flex: 1 }}>
-                        <h2 className="h4" style={{ fontSize: 15 }}>{subjectOf(active.subject)}</h2>
-                        <div className="tiny muted">{other.name} · {role}{otherId.startsWith('tut-') && <> · <PresenceBadge tutorId={otherId} /></>}</div>
+                        <h2 className="h4" style={{ fontSize: 15 }}>{otherId.startsWith('lrn-') ? other.name : subjectOf(active.subject)}</h2>
+                        <div className="tiny muted">{otherId.startsWith('lrn-') ? (lang === 'fr' ? 'Camarade · apprenant·e' : 'Classmate · Learner') : `${other.name} · ${role}`}{otherId.startsWith('tut-') && <> · <PresenceBadge tutorId={otherId} /></>}</div>
                       </div>
                       {isInbox && active.id !== 'new' && (
                         <button type="button" className={`btn btn-sm ${isResolved(active) ? 'btn-ghost' : 'btn-secondary'}`} onClick={() => { toggleResolved(active); toast(isResolved(active) ? (lang === 'fr' ? 'Conversation rouverte' : 'Conversation reopened') : lang === 'fr' ? 'Marquée comme résolue' : 'Marked as resolved'); }}>
@@ -247,7 +263,7 @@ export function MessagesPage() {
                   if (newMate) {
                     actions.community
                       .message(newMate.id, body)
-                      .then((id) => select(id))
+                      .then((id) => { select(id); answerAsClassmate(id, newMate.id, body); })
                       .catch((err: unknown) => {
                         setDraft(body);
                         toast(err instanceof Error ? err.message : String(err));
@@ -262,6 +278,7 @@ export function MessagesPage() {
                       });
                   } else {
                     actions.sendMessage(active.id, body);
+                    answerAsClassmate(active.id, otherOf(active), body);
                   }
                 }}
               >
